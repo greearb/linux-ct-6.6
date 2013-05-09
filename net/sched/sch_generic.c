@@ -522,8 +522,15 @@ static void dev_watchdog(struct timer_list *t)
 
 			if (unlikely(timedout_ms)) {
 				trace_net_dev_xmit_timeout(dev, i);
-				WARN_ONCE(1, "NETDEV WATCHDOG: %s (%s): transmit queue %u timed out %u ms\n",
-					  dev->name, netdev_drivername(dev), i, timedout_ms);
+				printk(KERN_INFO "NETDEV WATCHDOG: %s (%s):"
+				       " transmit queue %u timed out after %u ms,"
+				       " trans_start: %lu, wd-timeout: %i"
+				       " jiffies: %lu tx-queues: %i\n",
+				       dev->name, netdev_drivername(dev), i,
+				       timedout_ms,
+				       trans_start, dev->watchdog_timeo,
+				       jiffies, dev->num_tx_queues);
+				WARN_ON_ONCE(1);
 				netif_freeze_queues(dev);
 				dev->netdev_ops->ndo_tx_timeout(dev, i);
 				netif_unfreeze_queues(dev);
