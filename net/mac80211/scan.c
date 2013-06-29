@@ -88,6 +88,8 @@ void ieee80211_inform_bss(struct wiphy *wiphy,
 		bss->device_ts_presp = rx_status->device_timestamp;
 
 	if (elems->parse_error) {
+		strncpy(bss->corrupt_elems_msg, elems->parse_err_msg,
+			sizeof(bss->corrupt_elems_msg));
 		if (update_data->beacon)
 			bss->corrupt_data |= IEEE80211_BSS_CORRUPT_BEACON;
 		else
@@ -97,6 +99,10 @@ void ieee80211_inform_bss(struct wiphy *wiphy,
 			bss->corrupt_data &= ~IEEE80211_BSS_CORRUPT_BEACON;
 		else
 			bss->corrupt_data &= ~IEEE80211_BSS_CORRUPT_PROBE_RESP;
+		if (!(bss->corrupt_data &
+		      (IEEE80211_BSS_CORRUPT_BEACON |
+		       IEEE80211_BSS_CORRUPT_PROBE_RESP)))
+			bss->corrupt_elems_msg[0] = 0;
 	}
 
 	/* save the ERP value so that it is available at association time */
