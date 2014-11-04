@@ -7197,7 +7197,7 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 					    false);
 	}
 
-	sdata_info(sdata, "authenticate with %pM\n", auth_data->ap_addr);
+	sdata_info(sdata, "%pM authenticate with %pM\n", sdata->dev->dev_addr, auth_data->ap_addr);
 
 	/* needed for transmitting the auth frame(s) properly */
 	memcpy(sdata->vif.cfg.ap_addr, auth_data->ap_addr, ETH_ALEN);
