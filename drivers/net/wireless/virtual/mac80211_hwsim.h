@@ -84,6 +84,11 @@ enum hwsim_tx_control_flags {
  * @HWSIM_CMD_START_PMSR: request to start peer measurement with the
  *	%HWSIM_ATTR_PMSR_REQUEST. Result will be sent back asynchronously
  *	with %HWSIM_CMD_REPORT_PMSR.
+ * @HWSIM_CMD_NOTIFY: notify user-space about driver changes.  This is
+ * designed to help the user-space app better emulate radio hardware.
+ * This command uses:
+ *      %HWSIM_ATTR_FREQ # Notify current operating center frequency.
+ *      %HWSIM_ATTR_ADDR_TRANSMITTER # ID which radio we are notifying about.
  * @__HWSIM_CMD_MAX: enum limit
  */
 enum {
@@ -99,6 +104,7 @@ enum {
 	HWSIM_CMD_START_PMSR,
 	HWSIM_CMD_ABORT_PMSR,
 	HWSIM_CMD_REPORT_PMSR,
+	HWSIM_CMD_NOTIFY,
 	__HWSIM_CMD_MAX,
 };
 #define HWSIM_CMD_MAX (_HWSIM_CMD_MAX - 1)
