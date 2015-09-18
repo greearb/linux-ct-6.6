@@ -86,6 +86,9 @@
 #define ATH10K_ITER_RESUME_FLAGS (IEEE80211_IFACE_ITER_RESUME_ALL |\
 				  IEEE80211_IFACE_SKIP_SDATA_NOT_IN_DRIVER)
 
+// TODO-BEN:  Remove this and fix all instances of vif_to_arvif.
+#define ath10k_vif_to_arvif(a) (void*)(a->drv_priv)
+
 struct ath10k;
 
 static inline const char *ath10k_bus_str(enum ath10k_bus bus)
