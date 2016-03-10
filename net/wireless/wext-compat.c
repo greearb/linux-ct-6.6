@@ -1317,7 +1317,7 @@ static int cfg80211_wext_siwrate(struct net_device *dev,
 	if (dev->ieee80211_ptr->valid_links)
 		ret = -EOPNOTSUPP;
 	else
-		ret = rdev_set_bitrate_mask(rdev, dev, 0, NULL, &mask);
+		ret = rdev_set_bitrate_mask(rdev, dev, 0, NULL, &mask, false);
 	wiphy_unlock(&rdev->wiphy);
 
 	return ret;

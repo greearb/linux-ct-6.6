@@ -12557,6 +12557,7 @@ static int nl80211_set_tx_bitrate_mask(struct sk_buff *skb,
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
 	struct net_device *dev = info->user_ptr[1];
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
+	bool is_advert_mask = false;
 	int err;
 
 	if (!rdev->ops->set_bitrate_mask)
@@ -12569,7 +12570,12 @@ static int nl80211_set_tx_bitrate_mask(struct sk_buff *skb,
 	if (err)
 		goto out;
 
-	err = rdev_set_bitrate_mask(rdev, dev, link_id, NULL, &mask);
+	/* Cannot easily carry out-of-tree attributes, so add hack to re-use existing
+	 * flag (that is not otherwise used when setting bitrate masks.
+	 */
+	is_advert_mask = nla_get_flag(info->attrs[NL80211_ATTR_WIPHY_SELF_MANAGED_REG]);
+
+	err = rdev_set_bitrate_mask(rdev, dev, link_id, NULL, &mask, is_advert_mask);
 out:
 	wdev_unlock(wdev);
 	return err;
