@@ -1435,6 +1435,16 @@ start_again:
 			strncpy(ar->fwcfg.calname, val, sz);
 			ar->fwcfg.calname[sz - 1] = 0; /* ensure null term */
 		}
+		else if (strcasecmp(filename, "bname") == 0) {
+			sz = sizeof(ar->fwcfg.bname);
+			strncpy(ar->fwcfg.bname, val, sz);
+			ar->fwcfg.bname[sz - 1] = 0; /* ensure null term */
+		}
+		else if (strcasecmp(filename, "bname_ext") == 0) {
+			sz = sizeof(ar->fwcfg.bname_ext);
+			strncpy(ar->fwcfg.bname_ext, val, sz);
+			ar->fwcfg.bname_ext[sz - 1] = 0; /* ensure null term */
+		}
 		else if (strcasecmp(filename, "fwname") == 0) {
 			sz = sizeof(ar->fwcfg.fwname);
 			strncpy(ar->fwcfg.fwname, val, sz);
@@ -1551,6 +1561,10 @@ static int ath10k_core_fetch_board_data_api_1(struct ath10k *ar, int bd_ie_type)
 
 		scnprintf(boardname, sizeof(boardname), "board-%s-%s.bin",
 			  ath10k_bus_str(ar->hif.bus), dev_name(ar->dev));
+		if (ar->fwcfg.bname[0]) {
+			strncpy(boardname, ar->fwcfg.bname, sizeof(boardname) - 1);
+			boardname[sizeof(boardname) - 1] = 0;
+		}
 
 		ar->normal_mode_fw.board = ath10k_fetch_fw_file(ar,
 								ar->hw_params.fw.dir,
@@ -1573,8 +1587,12 @@ static int ath10k_core_fetch_board_data_api_1(struct ath10k *ar, int bd_ie_type)
 			return -EINVAL;
 		}
 
-		fw = ath10k_fetch_fw_file(ar, ar->hw_params.fw.dir,
-					  ar->hw_params.fw.eboard);
+		if (ar->fwcfg.bname_ext[0])
+			fw = ath10k_fetch_fw_file(ar, ar->hw_params.fw.dir,
+						  ar->fwcfg.bname_ext);
+		else
+			fw = ath10k_fetch_fw_file(ar, ar->hw_params.fw.dir,
+						  ar->hw_params.fw.eboard);
 		ar->normal_mode_fw.ext_board = fw;
 		if (IS_ERR(ar->normal_mode_fw.ext_board))
 			return PTR_ERR(ar->normal_mode_fw.ext_board);
@@ -1937,7 +1955,8 @@ fallback:
 	}
 
 success:
-	ath10k_dbg(ar, ATH10K_DBG_BOOT, "using board api %d\n", ar->bd_api);
+	ath10k_dbg(ar, ATH10K_DBG_BOOT, "using board api %d, specified-fild-name: %s\n",
+		   ar->bd_api, ar->fwcfg.bname[0] ? ar->fwcfg.bname : "NA");
 	return 0;
 }
 EXPORT_SYMBOL(ath10k_core_fetch_board_file);
