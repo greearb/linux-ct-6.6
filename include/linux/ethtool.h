@@ -840,6 +840,8 @@ struct ethtool_ops {
 	int	(*set_phys_id)(struct net_device *, enum ethtool_phys_id_state);
 	void	(*get_ethtool_stats)(struct net_device *,
 				     struct ethtool_stats *, u64 *);
+/* Make backporting easier */
+#define HAS_ETHTOOL_STATS2 1
 	void	(*get_ethtool_stats2)(struct net_device *,
 				      struct ethtool_stats *, u64 *, u32 level);
 	int	(*begin)(struct net_device *);
