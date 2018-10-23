@@ -1750,7 +1750,7 @@ int ieee80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 	ret = ieee80211_check_combinations(sdata, &params->chandef, chanmode,
 					   radar_detect_width);
 	if (ret < 0) {
-		sdata_info(sdata, "ibss-join:  Failed iface combination check.\n");
+		sdata_info(sdata, "ibss-join:  Failed iface combination check: %d\n", ret);
 		return ret;
 	}
 

@@ -354,6 +354,8 @@ static int ieee80211_change_mac(struct net_device *dev, void *addr)
 	wiphy_lock(local->hw.wiphy);
 	ret = _ieee80211_change_mac(sdata, addr);
 	wiphy_unlock(local->hw.wiphy);
+	if (ret)
+		sdata_info(sdata, "check-concurrent-iface:  check-combinations failed: %d\n", ret);
 
 	return ret;
 }
