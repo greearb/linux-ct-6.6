@@ -6013,8 +6013,10 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
 
 	err = cfg80211_validate_beacon_int(rdev, dev->ieee80211_ptr->iftype,
 					   params->beacon_interval);
-	if (err)
+	if (err) {
+		pr_err("start-ap, validate-beacon-int: %d failed: %d\n", params->beacon_interval, err);
 		goto out;
+	}
 
 	/*
 	 * In theory, some of these attributes should be required here
@@ -6315,7 +6317,8 @@ static int nl80211_set_beacon(struct sk_buff *skb, struct genl_info *info)
 
 out:
 	kfree(params.mbssid_ies);
-	kfree(params.rnr_ies);
+	if (err)
+		pr_err("nl80211-set-beacon failed, rdev-change-beacon, err: %d\n", err);
 	return err;
 }
 
