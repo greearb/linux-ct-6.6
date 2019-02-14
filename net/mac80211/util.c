@@ -4511,6 +4511,7 @@ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 		 * by the time it gets it, sdata->wdev.cac_started
 		 * will no longer be true
 		 */
+		sdata_info(sdata, "dfs_cac_candel, canceling dfs-cac-timer-work.\n");
 		wiphy_delayed_work_cancel(local->hw.wiphy,
 					  &sdata->deflink.dfs_cac_timer_work);
 
