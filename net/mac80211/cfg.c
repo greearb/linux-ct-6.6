@@ -1661,6 +1661,7 @@ static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev,
 	if (sdata->wdev.cac_started) {
 		chandef = link_conf->chandef;
 		cancel_delayed_work_sync(&link->dfs_cac_timer_work);
+		sdata_info(sdata, "stop-ap, canceling dfs-cac-timer-work.\n");
 		cfg80211_cac_event(sdata->dev, &chandef,
 				   NL80211_RADAR_CAC_ABORTED,
 				   GFP_KERNEL);
@@ -3454,6 +3455,7 @@ static int ieee80211_start_radar_detection(struct wiphy *wiphy,
 		goto out_unlock;
 	}
 
+	sdata_info(sdata, "start-radar-detection, starting dfs-cac-timer-work.\n");
 	ieee80211_queue_delayed_work(&sdata->local->hw,
 				     &sdata->deflink.dfs_cac_timer_work,
 				     msecs_to_jiffies(cac_time_ms));
