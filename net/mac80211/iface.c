@@ -1546,6 +1546,12 @@ static void ieee80211_iface_process_skb(struct ieee80211_local *local,
 		struct sta_info *sta;
 		int len = skb->len;
 
+		int barv = drv_consume_block_ack(local, sdata, skb);
+
+		/*pr_err("called drv_consume_blockack, rv: %d\n", barv);*/
+		if (barv == 0)
+			return;
+
 		mutex_lock(&local->sta_mtx);
 		sta = sta_info_get_bss(sdata, mgmt->sa);
 		if (sta) {
@@ -1707,6 +1713,8 @@ static void ieee80211_iface_work(struct wiphy *wiphy, struct wiphy_work *work)
 			ieee80211_process_tdls_channel_switch(sdata, skb);
 		else
 			ieee80211_iface_process_skb(local, sdata, skb);
+
+	done_skb_free:
 
 		kfree_skb(skb);
 		kcov_remote_stop();
