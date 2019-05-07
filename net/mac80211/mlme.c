@@ -3390,6 +3390,7 @@ static void __ieee80211_disconnect(struct ieee80211_sub_if_data *sdata)
 		 * out of range, but if they weren't the driver likely would
 		 * have switched to just have a single link active?
 		 */
+		/*
 		for (link_id = 0;
 		     link_id < ARRAY_SIZE(sdata->link);
 		     link_id++) {
@@ -3401,6 +3402,7 @@ static void __ieee80211_disconnect(struct ieee80211_sub_if_data *sdata)
 			cfg80211_unlink_bss(local->hw.wiphy, link->u.mgd.bss);
 			link->u.mgd.bss = NULL;
 		}
+		*/
 	}
 
 	ieee80211_set_disassoc(sdata, IEEE80211_STYPE_DEAUTH,
@@ -6598,7 +6600,7 @@ static int ieee80211_auth(struct ieee80211_sub_if_data *sdata)
 		 * Most likely AP is not in the range so remove the
 		 * bss struct for that AP.
 		 */
-		cfg80211_unlink_bss(local->hw.wiphy, auth_data->bss);
+		//cfg80211_unlink_bss(local->hw.wiphy, auth_data->bss);
 
 		return -ETIMEDOUT;
 	}
@@ -6664,8 +6666,8 @@ static int ieee80211_do_assoc(struct ieee80211_sub_if_data *sdata)
 		 * Most likely AP is not in the range so remove the
 		 * bss struct for that AP.
 		 */
-		cfg80211_unlink_bss(local->hw.wiphy,
-				    assoc_data->link[assoc_data->assoc_link_id].bss);
+		//cfg80211_unlink_bss(local->hw.wiphy,
+		//		    assoc_data->link[assoc_data->assoc_link_id].bss);
 
 		return -ETIMEDOUT;
 	}
