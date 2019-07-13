@@ -2115,7 +2115,6 @@ static int ieee80211_build_preq_ies_band(struct ieee80211_sub_if_data *sdata,
 	int ext_rates_len;
 	int shift;
 	u32 rate_flags;
-	bool have_80mhz;
 
 	*offset = 0;
 
@@ -2251,9 +2250,7 @@ static int ieee80211_build_preq_ies_band(struct ieee80211_sub_if_data *sdata,
 		*offset = noffset;
 	}
 
-	have_80mhz = ieee80211_any_band_supports_80mhz(local);
-
-	if (sband->vht_cap.vht_supported && have_80mhz &&
+	if (sband->vht_cap.vht_supported &&
 	    !(flags & IEEE80211_PROBE_FLAG_DISABLE_VHT)) {
 		if (end - pos < 2 + sizeof(struct ieee80211_vht_cap))
 			goto out_err;

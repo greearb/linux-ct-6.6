@@ -4980,9 +4980,6 @@ static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
 		}
 	}
 
-	if (!ieee80211_any_band_supports_80mhz(local))
-		*conn_flags |= IEEE80211_CONN_DISABLE_VHT;
-
 	if (sband->band == NL80211_BAND_S1GHZ) {
 		s1g_oper = elems->s1g_oper;
 		if (!s1g_oper)
