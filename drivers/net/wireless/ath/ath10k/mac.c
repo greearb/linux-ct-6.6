@@ -9063,6 +9063,8 @@ static void ath10k_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
                 goto skip;
         }
 
+	ath10k_htt_flush_tx(&ar->htt); /* sdio only */
+
         /* Wait for entire tx-q to finish transmitting */
         ath10k_mac_wait_tx_complete(ar);
 
