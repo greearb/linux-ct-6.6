@@ -59,7 +59,7 @@ config IWLWIFI_FORCE_OFDM_RATE
 config IWLMVM_P2P_OPPPS_TEST_WA
 	bool "Use WA to pass P2P OPPPS certification test"
 	depends on IWLMVM
-	---help---
+	help
 	  This option enables a WA to pass P2P OPPPS certification test.
 	  This test verifies P2P client power management behavior when
 	  connected to P2P GO that advertises OPPPS. Since P2P client power

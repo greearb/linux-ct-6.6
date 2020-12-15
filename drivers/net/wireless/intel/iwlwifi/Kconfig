@@ -51,14 +51,14 @@ config IWLWIFI_LEDS
 	bool
 	depends on LEDS_CLASS=y || LEDS_CLASS=MAC80211
 	depends on IWLMVM || IWLDVM
-	depends on LEDS_TRIGGERS
+	select LEDS_TRIGGERS
 	select MAC80211_LEDS
 	default y
 
 config IWLMVM
 	tristate "Intel Wireless WiFi MVM Firmware support"
 	depends on m
-	select BPAUTO_WANT_DEV_COREDUMP
+	select WANT_DEV_COREDUMP
 	depends on MAC80211
 	depends on PTP_1588_CLOCK_OPTIONAL
 	help
