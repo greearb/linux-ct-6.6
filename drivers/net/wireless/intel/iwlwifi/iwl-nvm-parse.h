@@ -90,4 +90,14 @@ iwl_parse_mei_nvm_data(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		       const struct iwl_mei_nvm *mei_nvm,
 		       const struct iwl_fw *fw);
 
+/**
+ * iwl_reinit_capab - Re-initialize the current HT, VHT and/or HE capabilities
+ *
+ * This should be called when changing values that affect the capabilities, such
+ * as number of spatial streams.
+ */
+void iwl_reinit_capab(struct iwl_trans *trans,
+		      struct iwl_nvm_data *data,
+		      u8 tx_chains, u8 rx_chains, const struct iwl_fw *fw);
+
 #endif /* __iwl_nvm_parse_h__ */
