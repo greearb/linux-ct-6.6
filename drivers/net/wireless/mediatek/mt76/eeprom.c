@@ -8,6 +8,7 @@
 #include <linux/mtd/partitions.h>
 #include <linux/etherdevice.h>
 #include "mt76.h"
+#include <linux/version.h>
 
 int mt76_get_of_eeprom(struct mt76_dev *dev, void *eep, int offset, int len)
 {
