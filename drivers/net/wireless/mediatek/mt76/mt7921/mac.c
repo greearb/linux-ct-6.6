@@ -160,12 +160,17 @@ void mt7921_mac_sta_poll(struct mt7921_dev *dev)
 			u8 offs = MT_WTBL_TXRX_RATE_G2_HE + 2 * bw;
 
 			rate->he_gi = (val & (0x3 << offs)) >> offs;
+			msta->wcid.rate_he_gi = rate->he_gi; /* cache for later */
 		} else if (rate->flags &
 			   (RATE_INFO_FLAGS_VHT_MCS | RATE_INFO_FLAGS_MCS)) {
-			if (val & BIT(MT_WTBL_TXRX_RATE_G2 + bw))
+			if (val & BIT(MT_WTBL_TXRX_RATE_G2 + bw)) {
 				rate->flags |= RATE_INFO_FLAGS_SHORT_GI;
-			else
+				msta->wcid.rate_short_gi = 1;
+			}
+			else {
 				rate->flags &= ~RATE_INFO_FLAGS_SHORT_GI;
+				msta->wcid.rate_short_gi = 0;
+			}
 		}
 
 		/* get signal strength of resp frames (CTS/BA/ACK) */
