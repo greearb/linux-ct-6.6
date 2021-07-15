@@ -185,8 +185,8 @@ static void iwl_pcie_alloc_fw_monitor_block(struct iwl_trans *trans,
 			continue;
 
 		IWL_INFO(trans,
-			 "Allocated 0x%08x bytes for firmware monitor, max_power: %d  min_power: %d  power: %d.\n",
-			 size, max_power, min_power, power);
+			 "Allocated 0x%08x bytes for firmware monitor, max_power: %d power: %d.\n",
+			 size, max_power, power);
 		break;
 	}
 
