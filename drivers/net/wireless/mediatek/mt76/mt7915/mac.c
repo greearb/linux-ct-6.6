@@ -278,6 +278,7 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb,
 	struct ieee80211_supported_band *sband;
 	__le32 *rxd = (__le32 *)skb->data;
 	__le32 *rxv = NULL;
+	/* table "PP -> HOST / X-CPU"  RX Format */
 	u32 rxd0 = le32_to_cpu(rxd[0]);
 	u32 rxd1 = le32_to_cpu(rxd[1]);
 	u32 rxd2 = le32_to_cpu(rxd[2]);
@@ -368,7 +369,7 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb,
 
 	rxd += 6;
 	if (rxd1 & MT_RXD1_NORMAL_GROUP_4) {
-		u32 v0 = le32_to_cpu(rxd[0]);
+		u32 v0 = le32_to_cpu(rxd[0]); /* DW6 */
 		u32 v2 = le32_to_cpu(rxd[2]);
 
 		fc = cpu_to_le16(FIELD_GET(MT_RXD6_FRAME_CONTROL, v0));
@@ -381,6 +382,7 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb,
 	}
 
 	if (rxd1 & MT_RXD1_NORMAL_GROUP_1) {
+		/* DW10, assuming Group-4 enabled */
 		u8 *data = (u8 *)rxd;
 
 		if (status->flag & RX_FLAG_DECRYPTED) {
@@ -412,6 +414,7 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb,
 	}
 
 	if (rxd1 & MT_RXD1_NORMAL_GROUP_2) {
+		/* DW14, assuming group-1,4 */
 		status->timestamp = le32_to_cpu(rxd[0]);
 		status->flag |= RX_FLAG_MACTIME_START;
 
@@ -438,17 +441,21 @@ mt7915_mac_fill_rx(struct mt7915_dev *dev, struct sk_buff *skb,
 		u32 v0, v1;
 		int ret;
 
-		rxv = rxd;
+		rxv = rxd; /* DW16 assuming group 1,2,3,4 */
 		rxd += 2;
 		if ((u8 *)rxd - skb->data >= skb->len)
 			return -EINVAL;
 
-		v0 = le32_to_cpu(rxv[0]);
+		v0 = le32_to_cpu(rxv[0]);  /* DW16, P-VEC1 31:0 */
+		/* DW17, RX_RCPI copied over P-VEC 64:32 Per RX Format doc. */
 		v1 = le32_to_cpu(rxv[1]);
 
 		if (v0 & MT_PRXV_HT_AD_CODE)
 			status->enc_flags |= RX_ENC_FLAG_LDPC;
 
+		/* TODO:  When group-5 is enabled, use nss (and stbc) to
+		 * calculate chains properly for this particular skb.
+		 */
 		status->chains = mphy->antenna_mask;
 		status->chain_signal[0] = to_rssi(MT_PRXV_RCPI0, v1);
 		status->chain_signal[1] = to_rssi(MT_PRXV_RCPI1, v1);
