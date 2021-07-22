@@ -420,7 +420,7 @@ static int mt7996_config(struct ieee80211_hw *hw, u32 changed)
 			phy->rxfilter &= ~MT_WF_RFCR_DROP_OTHER_UC;
 
 		mt76_rmw_field(dev, MT_DMA_DCR0(phy->mt76->band_idx),
-			       MT_DMA_DCR0_RXD_G5_EN, enabled);
+			       MT_DMA_DCR0_RXD_G5_EN, enabled || dev->rx_group_5_enable);
 		mt76_wr(dev, MT_WF_RFCR(phy->mt76->band_idx), phy->rxfilter);
 	}
 
