@@ -180,6 +180,8 @@ struct mt7921_vif {
 };
 
 struct mib_stats {
+	struct mt76_mib_stats common;
+
 	u32 ack_fail_cnt;
 	u32 fcs_err_cnt;
 	u32 rts_cnt;

@@ -119,6 +119,13 @@ struct mt76_connac_pm {
 	} stats;
 };
 
+struct mt76_mib_stats {
+	u32 rx_d_bad_ht_rix;
+	u32 rx_d_bad_vht_rix;
+	u32 rx_d_bad_mode;
+	u32 rx_d_bad_bw;
+};
+
 struct mt76_connac_coredump {
 	struct sk_buff_head msg_list;
 	struct delayed_work work;
@@ -409,6 +416,7 @@ int mt76_connac2_mac_fill_rx_rate(struct mt76_dev *dev,
 				  struct mt76_rx_status *status,
 				  struct ieee80211_supported_band *sband,
 				  __le32 *rxv, u8 *mode, u8 *nss,
+				  struct mt76_mib_stats *mib,
 				  struct mt76_sta_stats *stats);
 
 #endif /* __MT76_CONNAC_H */

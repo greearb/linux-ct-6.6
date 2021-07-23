@@ -161,6 +161,8 @@ struct mt7915_vif {
 
 /* per-phy stats.  */
 struct mib_stats {
+	struct mt76_mib_stats common;
+
 	u32 ack_fail_cnt;
 	u32 fcs_err_cnt;
 	u32 rts_cnt;
@@ -218,6 +220,13 @@ struct mib_stats {
 
 	u32 tx_amsdu[8];
 	u32 tx_amsdu_cnt;
+
+	/* rx stats from the driver */
+	u32 rx_d_skb; /* total skb received in rx path */
+	u32 rx_d_rxd2_amsdu_err;
+	u32 rx_d_null_channels;
+	u32 rx_d_max_len_err;
+	u32 rx_d_too_short;
 };
 
 /* crash-dump */
