@@ -163,6 +163,13 @@ struct mt7915_vif {
 struct mib_stats {
 	struct mt76_mib_stats common;
 
+	/* phy wide driver stats */
+	u32 tx_pkts_nic; /* tx OK skb */
+	u32 tx_bytes_nic; /* tx OK bytes */
+	u32 rx_pkts_nic; /* rx OK skb */
+	u32 rx_bytes_nic; /* rx OK bytes */
+
+	/* MIB counters from FW/HW */
 	u32 ack_fail_cnt;
 	u32 fcs_err_cnt;
 	u32 rts_cnt;
