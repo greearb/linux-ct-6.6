@@ -1135,6 +1135,7 @@ static const char mt7921_gstrings_stats[][ETH_GSTRING_LEN] = {
 	"v_rx_bw_40",
 	"v_rx_bw_80",
 	"v_rx_bw_160",
+	"v_rx_bw_320",
 	"v_rx_bw_he_ru",
 	"v_rx_ru_106",
 	"v_rx_mcs_0",
