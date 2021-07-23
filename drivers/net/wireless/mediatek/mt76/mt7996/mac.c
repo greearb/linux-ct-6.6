@@ -287,7 +287,8 @@ static int
 mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 			struct mt76_rx_status *status,
 			struct ieee80211_supported_band *sband,
-			__le32 *rxv, u8 *mode, u8* nss)
+			__le32 *rxv, u8 *mode, u8* nss,
+			struct mt76_sta_stats *stats)
 {
 	u32 v0, v2;
 	u8 stbc, gi, bw, dcm;
@@ -363,6 +364,8 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 
 	switch (bw) {
 	case IEEE80211_STA_RX_BW_20:
+		if (stats)
+			stats->rx_bw_20++;
 		break;
 	case IEEE80211_STA_RX_BW_40:
 		if (*mode & MT_PHY_TYPE_HE_EXT_SU &&
@@ -370,20 +373,32 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 			status->bw = RATE_INFO_BW_HE_RU;
 			status->he_ru =
 				NL80211_RATE_INFO_HE_RU_ALLOC_106;
+			if (stats) {
+				stats->rx_bw_he_ru++;
+				stats->rx_ru_106++;
+			}
 		} else {
 			status->bw = RATE_INFO_BW_40;
+			if (stats)
+				stats->rx_bw_40++;
 		}
 		break;
 	case IEEE80211_STA_RX_BW_80:
 		status->bw = RATE_INFO_BW_80;
+		if (stats)
+			stats->rx_bw_80++;
 		break;
 	case IEEE80211_STA_RX_BW_160:
 		status->bw = RATE_INFO_BW_160;
+		if (stats)
+			stats->rx_bw_160++;
 		break;
 	/* rxv reports bw 320-1 and 320-2 separately */
 	case IEEE80211_STA_RX_BW_320:
 	case IEEE80211_STA_RX_BW_320 + 1:
 		status->bw = RATE_INFO_BW_320;
+		if (stats)
+			stats->rx_bw_320++;
 		break;
 	default:
 		return -EINVAL;
@@ -403,6 +418,15 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 		*nss >>= 1;
 
 	status->nss = *nss;
+
+	if (stats) {
+		if (*nss > 3)
+			stats->rx_nss[3]++;
+		else
+			stats->rx_nss[*nss - 1]++;
+		if (*mode < __MT_PHY_TYPE_MAX)
+			stats->rx_mode[*mode]++;
+        }
 
 	return 0;
 }
@@ -463,6 +487,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *dev, enum mt76_rxq_id q,
 	int idx;
 	u8 hw_aggr = false;
 	struct mt7996_sta *msta = NULL;
+	struct mt76_sta_stats *stats = NULL;
 
 	hw_aggr = status->aggr;
 	memset(status, 0, sizeof(*status));
@@ -491,6 +516,8 @@ mt7996_mac_fill_rx(struct mt7996_dev *dev, enum mt76_rxq_id q,
 	status->wcid = mt7996_rx_get_wcid(dev, idx, unicast);
 
 	if (status->wcid) {
+		stats = &status->wcid->stats;
+
 		msta = container_of(status->wcid, struct mt7996_sta, wcid);
 		spin_lock_bh(&dev->mt76.sta_poll_lock);
 		if (list_empty(&msta->wcid.poll_list))
@@ -627,7 +654,7 @@ mt7996_mac_fill_rx(struct mt7996_dev *dev, enum mt76_rxq_id q,
 				return -EINVAL;
 		}
 
-		ret = mt7996_mac_fill_rx_rate(dev, status, sband, rxv, &mode, &nss);
+		ret = mt7996_mac_fill_rx_rate(dev, status, sband, rxv, &mode, &nss, stats);
 		if (ret < 0)
 			return ret;
 
@@ -1340,10 +1367,12 @@ mt7996_txwi_free(struct mt7996_dev *dev, struct mt76_txwi_cache *t,
 		stats->tx_attempts += tx_cnt;
 		stats->tx_retries += tx_cnt - 1;
 
-		if (tx_status == 0)
+		if (tx_status == 0) {
 			stats->tx_mpdu_ok++;
-		else
+			stats->tx_bytes += t->skb->len;
+		} else {
 			stats->tx_failed++;
+		}
 	}
 
 	rcu_read_unlock();
