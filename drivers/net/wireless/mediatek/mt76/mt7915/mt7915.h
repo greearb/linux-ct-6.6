@@ -205,6 +205,7 @@ struct mib_stats {
 
 	/* rx stats */
 	u32 rx_fifo_full_cnt;
+	u32 rx_oor_cnt;
 	u32 channel_idle_cnt;
 	u32 primary_cca_busy_time;
 	u32 secondary_cca_busy_time;
