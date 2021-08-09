@@ -1719,8 +1719,6 @@ static void ieee80211_iface_work(struct wiphy *wiphy, struct wiphy_work *work)
 		else
 			ieee80211_iface_process_skb(local, sdata, skb);
 
-	done_skb_free:
-
 		kfree_skb(skb);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,13,0)
 		kcov_remote_stop();

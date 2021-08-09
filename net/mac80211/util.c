@@ -2283,7 +2283,7 @@ static int ieee80211_build_preq_ies_band(struct ieee80211_sub_if_data *sdata,
 	if (he_cap &&
 	    cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
 					 IEEE80211_CHAN_NO_HE)) {
-		pos = ieee80211_ie_build_he_cap(0, pos, he_cap, end);
+		pos = ieee80211_ie_build_he_cap(sdata, 0, pos, he_cap, end);
 		if (!pos)
 			goto out_err;
 	}
@@ -3376,7 +3376,8 @@ u8 ieee80211_ie_len_he_cap(struct ieee80211_sub_if_data *sdata, u8 iftype)
 				     he_cap->he_cap_elem.phy_cap_info);
 }
 
-u8 *ieee80211_ie_build_he_cap(ieee80211_conn_flags_t disable_flags, u8 *pos,
+u8 *ieee80211_ie_build_he_cap(struct ieee80211_sub_if_data *sdata,
+			      ieee80211_conn_flags_t disable_flags, u8 *pos,
 			      const struct ieee80211_sta_he_cap *he_cap,
 			      u8 *end)
 {
@@ -3384,6 +3385,7 @@ u8 *ieee80211_ie_build_he_cap(ieee80211_conn_flags_t disable_flags, u8 *pos,
 	u8 n;
 	u8 ie_len;
 	u8 *orig_pos = pos;
+	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 
 	/* Make sure we have place for the IE */
 	/*
@@ -3423,8 +3425,17 @@ u8 *ieee80211_ie_build_he_cap(ieee80211_conn_flags_t disable_flags, u8 *pos,
 	*pos++ = WLAN_EID_EXT_HE_CAPABILITY;
 
 	/* Fixed data */
-	memcpy(pos, &elem, sizeof(elem));
-	pos += sizeof(elem);
+	memcpy(pos, &he_cap->he_cap_elem, sizeof(he_cap->he_cap_elem));
+
+	/* Apply overrides as needed. */
+	if (disable_flags & IEEE80211_CONN_DISABLE_TWT) {
+		struct ieee80211_he_cap_elem *hec;
+		hec = (struct ieee80211_he_cap_elem *)(pos);
+		hec->mac_cap_info[0] &= ~(IEEE80211_HE_MAC_CAP0_TWT_REQ);
+		hec->mac_cap_info[0] &= ~(IEEE80211_HE_MAC_CAP0_TWT_RES);
+	}
+
+	pos += sizeof(he_cap->he_cap_elem);
 
 	memcpy(pos, &he_cap->he_mcs_nss_supp, n);
 	pos += n;
