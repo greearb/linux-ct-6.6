@@ -573,11 +573,11 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		return 0;
 
 	link_info(link,
-		  "AP %pM changed bandwidth, new config is %d.%03d MHz, width %d (%d.%03d/%d MHz)\n",
+		  "AP %pM changed bandwidth, new config is %d.%03d MHz, width %d (%d.%03d/%d MHz) ifmgd-flags: 0x%x\n",
 		  link->u.mgd.bssid, chandef.chan->center_freq,
 		  chandef.chan->freq_offset, chandef.width,
 		  chandef.center_freq1, chandef.freq1_offset,
-		  chandef.center_freq2);
+		  chandef.center_freq2, ifmgd->flags);
 
 	if (flags != (link->u.mgd.conn_flags &
 				(IEEE80211_CONN_DISABLE_HT |
@@ -592,6 +592,17 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		sdata_info(sdata,
 			   "AP %pM changed caps/bw in a way we can't support (0x%x/0x%x) - disconnect\n",
 			   link->u.mgd.bssid, flags, ifmgd->flags);
+		sdata_info(sdata, "chandef-valid: %d bw: %d ifmgd->flags mask: 0x%x\n",
+			   cfg80211_chandef_valid(&chandef),
+			   chandef.width,
+			   (link->u.mgd.conn_flags & (IEEE80211_CONN_DISABLE_HT |
+					    IEEE80211_CONN_DISABLE_VHT |
+					    IEEE80211_CONN_DISABLE_HE |
+					    IEEE80211_CONN_DISABLE_EHT |
+					    IEEE80211_CONN_DISABLE_40MHZ |
+					    IEEE80211_CONN_DISABLE_80P80MHZ |
+					    IEEE80211_CONN_DISABLE_160MHZ |
+					    IEEE80211_CONN_DISABLE_320MHZ)));
 		return -EINVAL;
 	}
 
@@ -7604,6 +7615,11 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 	if (req->flags & ASSOC_REQ_DISABLE_TWT)
 		conn_flags |= IEEE80211_CONN_DISABLE_TWT;
+
+	if (req->flags & ASSOC_REQ_DISABLE_160) {
+		conn_flags |= IEEE80211_CONN_DISABLE_160MHZ;
+		conn_flags |= IEEE80211_CONN_DISABLE_80P80MHZ;
+	}
 
 	memcpy(&ifmgd->ht_capa, &req->ht_capa, sizeof(ifmgd->ht_capa));
 	memcpy(&ifmgd->ht_capa_mask, &req->ht_capa_mask,
