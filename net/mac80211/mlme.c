@@ -782,6 +782,27 @@ static bool ieee80211_add_vht_ie(struct ieee80211_sub_if_data *sdata,
 	return mu_mimo_owner;
 }
 
+void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
+			     const struct ieee80211_sta_he_cap* he_cap,
+			     ieee80211_conn_flags_t conn_flags)
+{
+	memcpy(my_cap, he_cap, sizeof(*my_cap));
+
+	if (conn_flags & IEEE80211_CONN_DISABLE_160MHZ) {
+		my_cap->he_cap_elem.phy_cap_info[0] &=
+			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
+		my_cap->he_mcs_nss_supp.rx_mcs_160 = 0xffff;
+		my_cap->he_mcs_nss_supp.tx_mcs_160 = 0xffff;
+		pr_info("adjust-he-capp, disabling 160Mhz.");
+	}
+	if (conn_flags & IEEE80211_CONN_DISABLE_80P80MHZ) {
+		my_cap->he_cap_elem.phy_cap_info[0] &=
+			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
+		my_cap->he_mcs_nss_supp.rx_mcs_80p80 = 0xffff;
+		my_cap->he_mcs_nss_supp.tx_mcs_80p80 = 0xffff;
+	}
+}
+
 /* This function determines HE capability flags for the association
  * and builds the IE.
  */
@@ -793,6 +814,7 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 {
 	u8 *pos, *pre_he_pos;
 	const struct ieee80211_sta_he_cap *he_cap;
+	struct ieee80211_sta_he_cap my_cap;
 	u8 he_cap_size;
 
 	he_cap = ieee80211_get_he_iftype_cap_vif(sband, &sdata->vif);
@@ -800,11 +822,13 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	/* get a max size estimate */
+	ieee80211_adjust_he_cap(&my_cap, he_cap, conn_flags);
+
 	he_cap_size =
-		2 + 1 + sizeof(he_cap->he_cap_elem) +
-		ieee80211_he_mcs_nss_size(&he_cap->he_cap_elem) +
-		ieee80211_he_ppe_size(he_cap->ppe_thres[0],
-				      he_cap->he_cap_elem.phy_cap_info);
+		2 + 1 + sizeof(my_cap.he_cap_elem) +
+		ieee80211_he_mcs_nss_size(&my_cap.he_cap_elem) +
+		ieee80211_he_ppe_size(my_cap.ppe_thres[0],
+				      my_cap.he_cap_elem.phy_cap_info);
 	pos = skb_put(skb, he_cap_size);
 	pre_he_pos = pos;
 	pos = ieee80211_ie_build_he_cap(sdata, conn_flags,
@@ -3204,7 +3228,8 @@ static void ieee80211_mlme_send_probe_req(struct ieee80211_sub_if_data *sdata,
 
 	skb = ieee80211_build_probe_req(sdata, src, dst, (u32)-1, channel,
 					ssid, ssid_len, NULL, 0,
-					IEEE80211_PROBE_FLAG_DIRECTED);
+					IEEE80211_PROBE_FLAG_DIRECTED,
+					sdata->last_conn_flags);
 	if (skb)
 		ieee80211_tx_skb(sdata, skb);
 }
@@ -3367,7 +3392,8 @@ struct sk_buff *ieee80211_ap_probereq_get(struct ieee80211_hw *hw,
 	skb = ieee80211_build_probe_req(sdata, sdata->vif.addr, cbss->bssid,
 					(u32) -1, cbss->channel,
 					ssid->data, ssid_len,
-					NULL, 0, IEEE80211_PROBE_FLAG_DIRECTED);
+					NULL, 0, IEEE80211_PROBE_FLAG_DIRECTED,
+					ifmgd->assoc_data->link[0].conn_flags);
 	rcu_read_unlock();
 
 	return skb;
@@ -4676,15 +4702,19 @@ ieee80211_verify_peer_he_mcs_support(struct ieee80211_sub_if_data *sdata,
 static bool
 ieee80211_verify_sta_he_mcs_support(struct ieee80211_sub_if_data *sdata,
 				    struct ieee80211_supported_band *sband,
-				    const struct ieee80211_he_operation *he_op)
+				    const struct ieee80211_he_operation *he_op,
+				    ieee80211_conn_flags_t conn_flags)
 {
 	const struct ieee80211_sta_he_cap *sta_he_cap =
 		ieee80211_get_he_iftype_cap_vif(sband, &sdata->vif);
+	struct ieee80211_sta_he_cap my_cap;
 	u16 ap_min_req_set;
 	int i;
 
 	if (!sta_he_cap || !he_op)
 		return false;
+
+	ieee80211_adjust_he_cap(&my_cap, sta_he_cap, conn_flags);
 
 	ap_min_req_set = le16_to_cpu(he_op->he_mcs_nss_set);
 
@@ -4699,7 +4729,7 @@ ieee80211_verify_sta_he_mcs_support(struct ieee80211_sub_if_data *sdata,
 	/* Need to go over for 80MHz, 160MHz and for 80+80 */
 	for (i = 0; i < 3; i++) {
 		const struct ieee80211_he_mcs_nss_supp *sta_mcs_nss_supp =
-			&sta_he_cap->he_mcs_nss_supp;
+			&my_cap.he_mcs_nss_supp;
 		u16 sta_mcs_map_rx =
 			le16_to_cpu(((__le16 *)sta_mcs_nss_supp)[2 * i]);
 		u16 sta_mcs_map_tx =
@@ -4961,7 +4991,7 @@ static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
 		}
 
 		if (!ieee80211_verify_peer_he_mcs_support(sdata, ies, he_oper) ||
-		    !ieee80211_verify_sta_he_mcs_support(sdata, sband, he_oper))
+		    !ieee80211_verify_sta_he_mcs_support(sdata, sband, he_oper, *conn_flags))
 			*conn_flags |= IEEE80211_CONN_DISABLE_HE |
 				       IEEE80211_CONN_DISABLE_EHT;
 	}
@@ -7690,6 +7720,8 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 						 conn_flags, assoc_link_id);
 	override = link->u.mgd.conn_flags != conn_flags;
 	link->u.mgd.conn_flags |= conn_flags;
+
+	sdata->last_conn_flags = conn_flags;
 
 	if (WARN((sdata->vif.driver_flags & IEEE80211_VIF_SUPPORTS_UAPSD) &&
 		 ieee80211_hw_check(&local->hw, PS_NULLFUNC_STACK),

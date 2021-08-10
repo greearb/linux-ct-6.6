@@ -1030,6 +1030,7 @@ struct ieee80211_sub_if_data {
 	struct ieee80211_local *local;
 
 	unsigned int flags;
+	ieee80211_conn_flags_t last_conn_flags; /* Store last conn flags so we can later send to driver. */
 
 	unsigned long state;
 
@@ -2501,14 +2502,14 @@ int ieee80211_build_preq_ies(struct ieee80211_sub_if_data *sdata, u8 *buffer,
 			     const u8 *ie, size_t ie_len,
 			     u8 bands_used, u32 *rate_masks,
 			     struct cfg80211_chan_def *chandef,
-			     u32 flags);
+			     u32 flags, ieee80211_conn_flags_t conn_flags);
 struct sk_buff *ieee80211_build_probe_req(struct ieee80211_sub_if_data *sdata,
 					  const u8 *src, const u8 *dst,
 					  u32 ratemask,
 					  struct ieee80211_channel *chan,
 					  const u8 *ssid, size_t ssid_len,
 					  const u8 *ie, size_t ie_len,
-					  u32 flags);
+					  u32 flags, ieee80211_conn_flags_t conn_flags);
 u32 ieee80211_sta_get_rates(struct ieee80211_sub_if_data *sdata,
 			    struct ieee802_11_elems *elems,
 			    enum nl80211_band band, u32 *basic_rates);
@@ -2683,4 +2684,9 @@ ieee80211_eht_cap_ie_to_sta_eht_cap(struct ieee80211_sub_if_data *sdata,
 				    const struct ieee80211_eht_cap_elem *eht_cap_ie_elem,
 				    u8 eht_cap_len,
 				    struct link_sta_info *link_sta);
+
+void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
+			     const struct ieee80211_sta_he_cap* he_cap,
+			     ieee80211_conn_flags_t conn_flags);
+
 #endif /* IEEE80211_I_H */

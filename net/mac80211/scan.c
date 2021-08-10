@@ -414,7 +414,7 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local,
 					 &local->hw_scan_req->ies,
 					 req->ie, req->ie_len,
 					 bands_used, rates, &chandef,
-					 flags);
+					 flags, sdata->last_conn_flags);
 	local->hw_scan_req->req.ie_len = ielen;
 	local->hw_scan_req->req.no_cck = req->no_cck;
 	ether_addr_copy(local->hw_scan_req->req.mac_addr, req->mac_addr);
@@ -643,7 +643,7 @@ static void ieee80211_send_scan_probe_req(struct ieee80211_sub_if_data *sdata,
 
 	skb = ieee80211_build_probe_req(sdata, src, dst, ratemask, channel,
 					ssid, ssid_len,
-					ie, ie_len, flags);
+					ie, ie_len, flags, sdata->last_conn_flags);
 
 	if (skb) {
 		if (flags & IEEE80211_PROBE_FLAG_RANDOM_SN) {
@@ -1376,7 +1376,7 @@ int __ieee80211_request_sched_scan_start(struct ieee80211_sub_if_data *sdata,
 	ieee80211_build_preq_ies(sdata, ie, num_bands * iebufsz,
 				 &sched_scan_ies, req->ie,
 				 req->ie_len, bands_used, rate_masks, &chandef,
-				 flags);
+				 flags, sdata->last_conn_flags);
 
 	ret = drv_sched_scan_start(local, sdata, req, &sched_scan_ies);
 	if (ret == 0) {

@@ -130,6 +130,9 @@ int drv_sta_state(struct ieee80211_local *local,
 	if (!check_sdata_in_driver(sdata))
 		return -EIO;
 
+	/* Update CONN flags info in a place where driver can find it */
+	sta->sta.conn_flags = sdata->last_conn_flags;
+
 	trace_drv_sta_state(local, sdata, &sta->sta, old_state, new_state);
 	if (local->ops->sta_state) {
 		ret = local->ops->sta_state(&local->hw, &sdata->vif, &sta->sta,

@@ -2370,6 +2370,7 @@ struct ieee80211_sta {
 	bool mfp;
 	bool mlo;
 	u8 max_amsdu_subframes;
+	u32 conn_flags; /* copy of sdata->last_conn_flags to pass info to driver */
 
 	struct ieee80211_sta_aggregates *cur;
 
