@@ -319,6 +319,8 @@ mt7915_regd_notifier(struct wiphy *wiphy,
 	struct mt7915_dev *dev = mt7915_hw_dev(hw);
 	struct mt76_phy *mphy = hw->priv;
 	struct mt7915_phy *phy = mphy->priv;
+	struct cfg80211_chan_def *chandef = &mphy->chandef;
+	int ret;
 
 	memcpy(dev->mt76.alpha2, request->alpha2, sizeof(dev->mt76.alpha2));
 	dev->mt76.region = request->dfs_region;
@@ -330,8 +332,13 @@ mt7915_regd_notifier(struct wiphy *wiphy,
 	mt7915_init_txpower(dev, &mphy->sband_5g.sband);
 	mt7915_init_txpower(dev, &mphy->sband_6g.sband);
 
-	mphy->dfs_state = MT_DFS_STATE_UNKNOWN;
-	mt7915_dfs_init_radar_detector(phy);
+	if (!(chandef->chan->flags & IEEE80211_CHAN_RADAR))
+		return;
+
+	ret = mt7915_dfs_init_radar_detector(phy);
+	if (ret < 0)
+		dev_err(dev->mt76.dev, "init-wifi: dfs-init-radar-detector failed: %d",
+			ret);
 }
 
 static void

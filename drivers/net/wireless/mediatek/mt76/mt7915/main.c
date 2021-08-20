@@ -316,6 +316,40 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
 	mt76_packet_id_flush(&dev->mt76, &msta->wcid);
 }
 
+static void mt7915_init_dfs_state(struct mt7915_phy *phy)
+{
+	struct mt76_phy *mphy = phy->mt76;
+	struct ieee80211_hw *hw = mphy->hw;
+	struct cfg80211_chan_def *chandef = &hw->conf.chandef;
+	struct mt7915_dev *dev = phy->dev;
+	bool ext_phy = phy != &dev->phy;
+
+	if (hw->conf.flags & IEEE80211_CONF_OFFCHANNEL)
+		return;
+
+	if (!(chandef->chan->flags & IEEE80211_CHAN_RADAR) &&
+	    !(mphy->chandef.chan->flags & IEEE80211_CHAN_RADAR))
+		return;
+
+	if (phy->dfs_center_freq == chandef->chan->center_freq &&
+	    phy->dfs_ch_width == chandef->width)
+		return;
+
+	/* We are being moved to a new frequency/bw, still on DFS.  Stop
+	 * any existing DFS, then will start it again in the
+	 * init-radar-detector logic.
+	 */
+	if (phy->rdd_state) {
+		dev_dbg(dev->mt76.dev,
+			"init-dfs-state, channel changed, old: %d:%d  new: %d:%d, stopping radar.",
+			phy->dfs_center_freq, phy->dfs_ch_width,
+			chandef->chan->center_freq, chandef->width);
+		mt7915_dfs_stop_radar_detector(phy, ext_phy);
+	}
+	phy->dfs_center_freq = chandef->chan->center_freq;
+	phy->dfs_ch_width = chandef->width;
+}
+
 int mt7915_set_channel(struct mt7915_phy *phy)
 {
 	struct mt7915_dev *dev = phy->dev;
@@ -326,6 +360,7 @@ int mt7915_set_channel(struct mt7915_phy *phy)
 	mutex_lock(&dev->mt76.mutex);
 	set_bit(MT76_RESET, &phy->mt76->state);
 
+	mt7915_init_dfs_state(phy);
 	mt76_set_channel(phy->mt76);
 
 	if (dev->flash_mode) {
@@ -340,6 +375,9 @@ int mt7915_set_channel(struct mt7915_phy *phy)
 
 	mt7915_mac_set_timing(phy);
 	ret = mt7915_dfs_init_radar_detector(phy);
+	if (ret < 0)
+		dev_err(dev->mt76.dev, "set-channel: dfs-init-radar-detector failed: %d",
+			ret);
 	mt7915_mac_cca_stats_reset(phy);
 
 	mt7915_mac_reset_counters(phy);
