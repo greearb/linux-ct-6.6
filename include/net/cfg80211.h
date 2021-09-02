@@ -1253,6 +1253,7 @@ struct cfg80211_beacon_data {
 	struct cfg80211_mbssid_elems *mbssid_ies;
 	struct cfg80211_rnr_elems *rnr_ies;
 	s8 ftm_responder;
+	u8 he_ofdma_disable; /* should we try to disable ofdma? */
 
 	size_t head_len, tail_len;
 	size_t beacon_ies_len;
@@ -2917,6 +2918,7 @@ struct cfg80211_assoc_link {
  *	flag is not set.
  * @ASSOC_REQ_DISABLE_TWT:  Disable TWT
  * @ASSOC_REQ_DISABLE_160:  Disable 160Mhz
+ * @ASSOC_REQ_DISABLE_OFDMA:  Disable OFDMA
  */
 enum cfg80211_assoc_req_flags {
 	ASSOC_REQ_DISABLE_HT			= BIT(0),
@@ -2928,6 +2930,7 @@ enum cfg80211_assoc_req_flags {
 	CONNECT_REQ_MLO_SUPPORT			= BIT(6),
 	ASSOC_REQ_DISABLE_TWT                   = BIT(7),
 	ASSOC_REQ_DISABLE_160			= BIT(8),
+	ASSOC_REQ_DISABLE_OFDMA			= BIT(9),
 };
 
 /**

@@ -793,13 +793,20 @@ void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
 			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
 		my_cap->he_mcs_nss_supp.rx_mcs_160 = 0xffff;
 		my_cap->he_mcs_nss_supp.tx_mcs_160 = 0xffff;
-		pr_info("adjust-he-capp, disabling 160Mhz.");
+		pr_info("adjust-he-cap, disabling 160Mhz.");
 	}
 	if (conn_flags & IEEE80211_CONN_DISABLE_80P80MHZ) {
 		my_cap->he_cap_elem.phy_cap_info[0] &=
 			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
 		my_cap->he_mcs_nss_supp.rx_mcs_80p80 = 0xffff;
 		my_cap->he_mcs_nss_supp.tx_mcs_80p80 = 0xffff;
+	}
+	if (conn_flags & IEEE80211_CONN_DISABLE_OFDMA) {
+		pr_info("adjust-he-cap, disabling OFDMA.");
+		my_cap->he_cap_elem.mac_cap_info[3] &= ~IEEE80211_HE_MAC_CAP3_OFDMA_RA;
+		my_cap->he_cap_elem.mac_cap_info[5] &= ~IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
+		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB;
+		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
 	}
 }
 
@@ -7645,6 +7652,9 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 	if (req->flags & ASSOC_REQ_DISABLE_TWT)
 		conn_flags |= IEEE80211_CONN_DISABLE_TWT;
+
+	if (req->flags & ASSOC_REQ_DISABLE_OFDMA)
+		conn_flags |= IEEE80211_CONN_DISABLE_OFDMA;
 
 	if (req->flags & ASSOC_REQ_DISABLE_160) {
 		conn_flags |= IEEE80211_CONN_DISABLE_160MHZ;

@@ -3439,6 +3439,15 @@ u8 *ieee80211_ie_build_he_cap(struct ieee80211_sub_if_data *sdata,
 		hec->mac_cap_info[0] &= ~(IEEE80211_HE_MAC_CAP0_TWT_RES);
 	}
 
+	if (disable_flags & IEEE80211_CONN_DISABLE_OFDMA) {
+		struct ieee80211_he_cap_elem *hec;
+		hec = (struct ieee80211_he_cap_elem *)(pos);
+		hec->mac_cap_info[3] &= ~IEEE80211_HE_MAC_CAP3_OFDMA_RA;
+		hec->mac_cap_info[5] &= ~IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
+		hec->phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB;
+		hec->phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
+	}
+
 	pos += sizeof(he_cap->he_cap_elem);
 
 	memcpy(pos, &he_cap->he_mcs_nss_supp, n);
