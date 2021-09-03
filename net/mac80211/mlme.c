@@ -805,8 +805,14 @@ void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
 		pr_info("adjust-he-cap, disabling OFDMA.");
 		my_cap->he_cap_elem.mac_cap_info[3] &= ~IEEE80211_HE_MAC_CAP3_OFDMA_RA;
 		my_cap->he_cap_elem.mac_cap_info[5] &= ~IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
+		my_cap->he_cap_elem.phy_cap_info[3] &= ~IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB;
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
+		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_CQI_FB;
+
+                /* Disable MU related OFDMA stuff too */
+		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO;
+		my_cap->he_cap_elem.phy_cap_info[2] &= ~IEEE80211_HE_PHY_CAP2_UL_MU_PARTIAL_MU_MIMO;
 	}
 }
 
