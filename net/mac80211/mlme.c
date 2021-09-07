@@ -803,12 +803,21 @@ void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
 	}
 	if (conn_flags & IEEE80211_CONN_DISABLE_OFDMA) {
 		pr_info("adjust-he-cap, disabling OFDMA.");
+		my_cap->he_cap_elem.mac_cap_info[3] &= ~IEEE80211_HE_MAC_CAP3_OMI_CONTROL;
 		my_cap->he_cap_elem.mac_cap_info[3] &= ~IEEE80211_HE_MAC_CAP3_OFDMA_RA;
 		my_cap->he_cap_elem.mac_cap_info[5] &= ~IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX;
+		my_cap->he_cap_elem.phy_cap_info[0] &= ~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_RU_MAPPING_IN_2G;
+		my_cap->he_cap_elem.phy_cap_info[0] &= ~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_RU_MAPPING_IN_5G;
 		my_cap->he_cap_elem.phy_cap_info[3] &= ~IEEE80211_HE_PHY_CAP3_RX_PARTIAL_BW_SU_IN_20MHZ_MU;
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMING_FB;
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMING_PARTIAL_BW_FB;
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_TRIG_CQI_FB;
+		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE;
+		my_cap->he_cap_elem.phy_cap_info[9] &= ~IEEE80211_HE_PHY_CAP9_LONGER_THAN_16_SIGB_OFDM_SYM;
+		my_cap->he_cap_elem.phy_cap_info[9] &= ~IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU;
+		my_cap->he_cap_elem.phy_cap_info[9] &= ~IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU;
+		my_cap->he_cap_elem.phy_cap_info[9] &= ~IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB;
+		my_cap->he_cap_elem.phy_cap_info[9] &= ~IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB;
 
                 /* Disable MU related OFDMA stuff too */
 		my_cap->he_cap_elem.phy_cap_info[6] &= ~IEEE80211_HE_PHY_CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO;
