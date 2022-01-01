@@ -480,16 +480,23 @@ static int ieee80211_open(struct net_device *dev)
 	int err;
 
 	/* fail early if user set an invalid address */
-	if (!is_valid_ether_addr(dev->dev_addr))
+	if (!is_valid_ether_addr(dev->dev_addr)) {
+		sdata_info(sdata, "ieee80211_open:  invalid mac: %pM\n", dev->dev_addr);
 		return -EADDRNOTAVAIL;
+	}
 
 	err = ieee80211_check_concurrent_iface(sdata, sdata->vif.type);
-	if (err)
+	if (err) {
+		sdata_info(sdata, "ieee80211_open:  check-concurrent failed: %d\n", err);
 		return err;
+	}
 
 	wiphy_lock(sdata->local->hw.wiphy);
 	err = ieee80211_do_open(&sdata->wdev, true);
 	wiphy_unlock(sdata->local->hw.wiphy);
+
+	if (err)
+		sdata_info(sdata, "ieee80211_open:  ieee80211_do_open failed: %d\n", err);
 
 	return err;
 }
