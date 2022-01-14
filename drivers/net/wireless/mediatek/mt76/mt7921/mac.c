@@ -627,20 +627,27 @@ out:
 }
 
 void mt7921_txwi_free(struct mt7921_dev *dev, struct mt76_txwi_cache *t,
-		      struct ieee80211_sta *sta, bool clear_status,
-		      struct list_head *free_list)
+		      struct ieee80211_sta *sta, struct list_head *free_list,
+		      u32 tx_cnt, u32 tx_status, u32 ampdu)
 {
 	struct mt76_dev *mdev = &dev->mt76;
 	__le32 *txwi;
 	u16 wcid_idx;
+	struct mt76_wcid *wcid;
+	struct ieee80211_tx_info *info;
+	struct ieee80211_tx_rate *rate;
+	struct mt7921_phy *phy = &dev->phy;
+	struct mib_stats *mib = &phy->mib;
 
 	mt76_connac_txp_skb_unmap(mdev, t);
 	if (!t->skb)
 		goto out;
 
+	rcu_read_lock(); /* protect wcid access */
+
 	txwi = (__le32 *)mt76_get_txwi_ptr(mdev, t);
 	if (sta) {
-		struct mt76_wcid *wcid = (struct mt76_wcid *)sta->drv_priv;
+		wcid = (struct mt76_wcid *)sta->drv_priv;
 
 		if (likely(t->skb->protocol != cpu_to_be16(ETH_P_PAE)))
 			mt7921_tx_check_aggr(sta, txwi);
@@ -648,7 +655,71 @@ void mt7921_txwi_free(struct mt7921_dev *dev, struct mt76_txwi_cache *t,
 		wcid_idx = wcid->idx;
 	} else {
 		wcid_idx = le32_get_bits(txwi[1], MT_TXD1_WLAN_IDX);
+		wcid = rcu_dereference(mdev->wcid[wcid_idx]);
 	}
+
+	info = IEEE80211_SKB_CB(t->skb);
+
+	rate = &info->status.rates[0];
+	rate->idx = -1; /* will over-write below if we found wcid */
+	info->status.rates[1].idx = -1; /* terminate rate list */
+
+	/* force TX_STAT_AMPDU to be set, or mac80211 will ignore status */
+	if (ampdu || (info->flags & IEEE80211_TX_CTL_AMPDU)) {
+		info->flags |= IEEE80211_TX_STAT_AMPDU | IEEE80211_TX_CTL_AMPDU;
+		info->status.ampdu_len = 1;
+	}
+	/* update info status based on cached wcid rate info since
+	 * txfree path doesn't give us a lot of info.
+	 */
+	if (wcid) {
+		struct mt76_sta_stats *stats = &wcid->stats;
+
+		if (wcid->rate.flags & RATE_INFO_FLAGS_MCS) {
+			rate->flags |= IEEE80211_TX_RC_MCS;
+			rate->idx = wcid->rate.mcs + wcid->rate.nss * 8;
+		} else if (wcid->rate.flags & RATE_INFO_FLAGS_VHT_MCS) {
+			rate->flags |= IEEE80211_TX_RC_VHT_MCS;
+			rate->idx = (wcid->rate.nss << 4) | wcid->rate.mcs;
+		} else if (wcid->rate.flags & RATE_INFO_FLAGS_HE_MCS) {
+			rate->idx = (wcid->rate.nss << 4) | wcid->rate.mcs;
+		} else {
+			rate->idx = wcid->rate.mcs;
+		}
+
+		switch (wcid->rate.bw) {
+		case RATE_INFO_BW_160:
+			rate->flags |= IEEE80211_TX_RC_160_MHZ_WIDTH;
+			break;
+		case RATE_INFO_BW_80:
+			rate->flags |= IEEE80211_TX_RC_80_MHZ_WIDTH;
+			break;
+		case RATE_INFO_BW_40:
+			rate->flags |= IEEE80211_TX_RC_40_MHZ_WIDTH;
+			break;
+		}
+
+		stats->tx_mpdu_attempts += tx_cnt;
+		stats->tx_mpdu_retry += tx_cnt - 1;
+
+		if (tx_status == 0)
+			stats->tx_mpdu_ok++;
+		else
+			stats->tx_mpdu_fail++;
+	}
+
+	rcu_read_unlock();
+
+	/* Apply the values that this txfree path reports */
+	rate->count = tx_cnt;
+	if (tx_status == 0) {
+		mib->tx_pkts_nic++;
+		mib->tx_bytes_nic += t->skb->len;
+		info->flags |= IEEE80211_TX_STAT_ACK;
+		info->status.ampdu_ack_len = 1;
+	} else {
+		info->flags &= ~IEEE80211_TX_STAT_ACK;
+        }
 
 	__mt76_tx_complete_skb(mdev, wcid_idx, t->skb, free_list);
 out:
@@ -668,7 +739,8 @@ static void mt7921_mac_tx_free(struct mt7921_dev *dev, void *data, int len)
 	void *end = data + len;
 	LIST_HEAD(free_list);
 	bool wake = false;
-	u8 i, count;
+	u8 i;
+	u16 count;
 
 	/* clean DMA queues and unmap buffers first */
 	mt76_queue_tx_cleanup(dev, dev->mphy.q_tx[MT_TXQ_PSD], false);
@@ -680,7 +752,7 @@ static void mt7921_mac_tx_free(struct mt7921_dev *dev, void *data, int len)
 
 	for (i = 0; i < count; i++) {
 		u32 msdu, info = le32_to_cpu(tx_info[i]);
-		u8 stat;
+		u32 tx_status, tx_cnt, ampdu;
 
 		/* 1'b1: new wcid pair.
 		 * 1'b0: msdu_id with the same 'wcid pair' as above.
@@ -706,13 +778,17 @@ static void mt7921_mac_tx_free(struct mt7921_dev *dev, void *data, int len)
 		}
 
 		msdu = FIELD_GET(MT_TX_FREE_MSDU_ID, info);
-		stat = FIELD_GET(MT_TX_FREE_STATUS, info);
+
+		/* 0 = success, 1 dropped-by-hw, 2 dropped-by-cpu */
+		tx_status = FIELD_GET(MT_TX_FREE_STATUS, info);
+		tx_cnt = FIELD_GET(MT_TX_FREE_TXCNT, info);
+		ampdu = FIELD_GET(MT_TX_FREE_HEAD_OF_PAGE, info);
 
 		txwi = mt76_token_release(mdev, msdu, &wake);
 		if (!txwi)
 			continue;
 
-		mt7921_txwi_free(dev, txwi, sta, stat, &free_list);
+		mt7921_txwi_free(dev, txwi, sta, &free_list, tx_cnt, tx_status, ampdu);
 	}
 
 	if (wake)
