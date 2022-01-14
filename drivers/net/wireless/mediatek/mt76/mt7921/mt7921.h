@@ -182,6 +182,12 @@ struct mt7921_vif {
 struct mib_stats {
 	struct mt76_mib_stats common;
 
+	/* phy wide driver stats */
+	u32 tx_pkts_nic; /* tx OK skb */
+	u32 tx_bytes_nic; /* tx OK bytes */
+	u32 rx_pkts_nic; /* rx OK skb */
+	u32 rx_bytes_nic; /* rx OK bytes */
+
 	u32 ack_fail_cnt;
 	u32 fcs_err_cnt;
 	u32 rts_cnt;
@@ -208,6 +214,17 @@ struct mib_stats {
 
 	u32 tx_amsdu[8];
 	u32 tx_amsdu_cnt;
+
+	/* rx stats from the driver */
+	u32 rx_d_skb; /* total skb received in rx path */
+	u32 rx_d_rxd2_amsdu_err;
+	u32 rx_d_null_channels;
+	u32 rx_d_max_len_err;
+	u32 rx_d_too_short;
+	u32 rx_d_bad_ht_rix;
+	u32 rx_d_bad_vht_rix;
+	u32 rx_d_bad_mode;
+	u32 rx_d_bad_bw;
 };
 
 enum {
