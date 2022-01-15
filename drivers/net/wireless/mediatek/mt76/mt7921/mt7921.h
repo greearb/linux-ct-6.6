@@ -183,6 +183,8 @@ struct mt7921_vif {
 struct mib_stats {
 	struct mt76_mib_stats common;
 
+	/* TODO: rx_oor_cnt and similar stats that 7915 ? */
+	/* TODO: tx_mgt_frame_cnt and similar from 7915 ? */
 	/* phy wide driver stats */
 	u32 tx_pkts_nic; /* tx OK skb */
 	u32 tx_bytes_nic; /* tx OK bytes */
