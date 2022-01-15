@@ -91,6 +91,7 @@ struct mt792x_sta {
 	unsigned long last_txs;
 
 	struct mt76_connac_sta_key_conf bip;
+	struct mt76_testmode_data test;
 };
 
 DECLARE_EWMA(rssi, 10, 8);
