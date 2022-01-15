@@ -161,6 +161,7 @@ struct mt7921_sta {
 	unsigned long ampdu_state;
 
 	struct mt76_connac_sta_key_conf bip;
+	struct mt76_testmode_data test;
 };
 
 DECLARE_EWMA(rssi, 10, 8);
@@ -479,6 +480,10 @@ void mt7921_stop(struct ieee80211_hw *hw);
 int mt7921_mac_init(struct mt7921_dev *dev);
 bool mt7921_mac_wtbl_update(struct mt7921_dev *dev, int idx, u32 mask);
 void mt7921_mac_reset_counters(struct mt7921_phy *phy);
+void mt7921_mac_write_txwi(struct mt76_dev *dev, __le32 *txwi,
+			   struct sk_buff *skb, struct mt76_wcid *wcid, int pid,
+			   struct ieee80211_key_conf *key,
+			   enum mt76_txq_id qid, u32 changed);
 void mt7921_mac_set_timing(struct mt7921_phy *phy);
 int mt7921_mac_sta_add(struct mt76_dev *mdev, struct ieee80211_vif *vif,
 		       struct ieee80211_sta *sta);
