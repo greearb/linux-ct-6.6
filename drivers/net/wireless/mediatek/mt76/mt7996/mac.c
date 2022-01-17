@@ -390,6 +390,12 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 		else
 			*nss = 1;
 		break;
+		if (stats) {
+			if (unlikely(i > 13))
+				stats->rx_rate_idx[13]++;
+			else
+				stats->rx_rate_idx[i]++;
+		}
 	case MT_PHY_TYPE_HT_GF:
 	case MT_PHY_TYPE_HT:
 		status->encoding = RX_ENC_HT;
@@ -400,6 +406,11 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 			mib->common.rx_d_bad_ht_rix++;
 			return -EINVAL;
 		}
+		if (stats) {
+			int rix = i % 8;
+			stats->rx_rate_idx[rix]++;
+		}
+
 		break;
 	case MT_PHY_TYPE_VHT:
 		status->encoding = RX_ENC_VHT;
@@ -409,6 +420,8 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 			mib->common.rx_d_bad_vht_rix++;
 			return -EINVAL;
 		}
+		if (stats)
+			stats->rx_rate_idx[i]++;
 		break;
 	case MT_PHY_TYPE_HE_MU:
 	case MT_PHY_TYPE_HE_SU:
@@ -421,6 +434,12 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 			status->he_gi = gi;
 
 		status->he_dcm = dcm;
+		if (stats) {
+			if (unlikely(i > 13))
+				stats->rx_rate_idx[13]++;
+			else
+				stats->rx_rate_idx[i]++;
+		}
 		break;
 	case MT_PHY_TYPE_EHT_SU:
 	case MT_PHY_TYPE_EHT_TRIG:
@@ -431,6 +450,12 @@ mt7996_mac_fill_rx_rate(struct mt7996_dev *dev,
 
 		if (gi <= NL80211_RATE_INFO_EHT_GI_3_2)
 			status->eht.gi = gi;
+		if (stats) {
+			if (unlikely(i > 13))
+				stats->rx_rate_idx[13]++;
+			else
+				stats->rx_rate_idx[i]++;
+		}
 		break;
 	default:
 		mib->common.rx_d_bad_mode++;
