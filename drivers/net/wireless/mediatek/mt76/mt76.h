@@ -291,6 +291,7 @@ struct mt76_sta_stats {
 	u32 rx_bw_160;
 	u32 rx_bw_he_ru;
 	u32 rx_ru_106;
+	u32 rx_rate_idx[12];
 
 	u64 tx_bytes;
 	/* WED TX */
