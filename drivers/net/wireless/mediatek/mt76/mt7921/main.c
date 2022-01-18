@@ -1098,6 +1098,11 @@ static const char mt7921_gstrings_stats[][ETH_GSTRING_LEN] = {
 	"v_tx_mcs_10",
 	"v_tx_mcs_11",
 
+	"v_tx_nss_1",
+	"v_tx_nss_2",
+	"v_tx_nss_3",
+	"v_tx_nss_4",
+
 	/* per-vif rx counters */
 	"v_rx_nss1",
 	"v_rx_nss2",
