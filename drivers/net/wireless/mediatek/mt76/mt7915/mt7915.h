@@ -246,6 +246,38 @@ struct mib_stats {
 	u32 rx_d_null_channels;
 	u32 rx_d_max_len_err;
 	u32 rx_d_too_short;
+
+	/* mcu_muru_stats */
+	u32 rx_cck_cnt;
+	u32 rx_ofdm_cnt;
+	u32 rx_htmix_cnt;
+	u32 rx_htgf_cnt;
+	u32 rx_vht_su_cnt;
+	u32 rx_vht_2mu_cnt;
+	u32 rx_vht_3mu_cnt;
+	u32 rx_vht_4mu_cnt;
+	u32 rx_he_su_cnt;
+	u32 rx_he_ext_su_cnt;
+	u32 rx_he_2ru_cnt;
+	u32 rx_he_2mu_cnt;
+	u32 rx_he_3ru_cnt;
+	u32 rx_he_3mu_cnt;
+	u32 rx_he_4ru_cnt;
+	u32 rx_he_4mu_cnt;
+	u32 rx_he_5to8ru_cnt;
+	u32 rx_he_9to16ru_cnt;
+	u32 rx_he_gtr16ru_cnt;
+
+	u32 tx_hetrig_su_cnt;
+	u32 tx_hetrig_2ru_cnt;
+	u32 tx_hetrig_3ru_cnt;
+	u32 tx_hetrig_4ru_cnt;
+	u32 tx_hetrig_5to8ru_cnt;
+	u32 tx_hetrig_9to16ru_cnt;
+	u32 tx_hetrig_gtr16ru_cnt;
+	u32 tx_hetrig_2mu_cnt;
+	u32 tx_hetrig_3mu_cnt;
+	u32 tx_hetrig_4mu_cnt;
 };
 
 /* crash-dump */
@@ -658,7 +690,7 @@ void mt7915_set_stream_he_caps(struct mt7915_phy *phy);
 void mt7915_set_stream_vht_txbf_caps(struct mt7915_phy *phy);
 void mt7915_update_channel(struct mt76_phy *mphy);
 int mt7915_mcu_muru_debug_set(struct mt7915_dev *dev, bool enable);
-int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy, void *ms);
+int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy);
 int mt7915_mcu_wed_enable_rx_stats(struct mt7915_dev *dev);
 int mt7915_init_debugfs(struct mt7915_phy *phy);
 void mt7915_debugfs_rx_fw_monitor(struct mt7915_dev *dev, const void *data, int len);

@@ -2174,12 +2174,11 @@ int mt7915_mcu_muru_debug_set(struct mt7915_dev *dev, bool enabled)
 				sizeof(data), false);
 }
 
-int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy, void *ms)
+int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy)
 {
 	struct mt7915_dev *dev = phy->dev;
 	struct sk_buff *skb;
-	struct mt7915_mcu_muru_stats *mu_stats =
-				(struct mt7915_mcu_muru_stats *)ms;
+	struct mt7915_mcu_muru_stats *mu_stats;
 	int ret;
 
 	struct {
@@ -2195,7 +2194,39 @@ int mt7915_mcu_muru_debug_get(struct mt7915_phy *phy, void *ms)
 	if (ret)
 		return ret;
 
-	memcpy(mu_stats, skb->data, sizeof(struct mt7915_mcu_muru_stats));
+	mu_stats = (struct mt7915_mcu_muru_stats *)(skb->data);
+
+	/* accumulate stats, these are clear-on-read */
+	phy->mib.rx_cck_cnt += le32_to_cpu(mu_stats->dl.cck_cnt);
+	phy->mib.rx_ofdm_cnt += le32_to_cpu(mu_stats->dl.ofdm_cnt);
+	phy->mib.rx_htmix_cnt += le32_to_cpu(mu_stats->dl.htmix_cnt);
+	phy->mib.rx_htgf_cnt += le32_to_cpu(mu_stats->dl.htgf_cnt);
+	phy->mib.rx_vht_su_cnt += le32_to_cpu(mu_stats->dl.vht_su_cnt);
+	phy->mib.rx_vht_2mu_cnt += le32_to_cpu(mu_stats->dl.vht_2mu_cnt);
+	phy->mib.rx_vht_3mu_cnt += le32_to_cpu(mu_stats->dl.vht_3mu_cnt);
+	phy->mib.rx_vht_4mu_cnt += le32_to_cpu(mu_stats->dl.vht_4mu_cnt);
+	phy->mib.rx_he_su_cnt += le32_to_cpu(mu_stats->dl.he_su_cnt);
+	phy->mib.rx_he_2ru_cnt += le32_to_cpu(mu_stats->dl.he_2ru_cnt);
+	phy->mib.rx_he_2mu_cnt += le32_to_cpu(mu_stats->dl.he_2mu_cnt);
+	phy->mib.rx_he_3ru_cnt += le32_to_cpu(mu_stats->dl.he_3ru_cnt);
+	phy->mib.rx_he_3mu_cnt += le32_to_cpu(mu_stats->dl.he_3mu_cnt);
+	phy->mib.rx_he_4ru_cnt += le32_to_cpu(mu_stats->dl.he_4ru_cnt);
+	phy->mib.rx_he_4mu_cnt += le32_to_cpu(mu_stats->dl.he_4mu_cnt);
+	phy->mib.rx_he_5to8ru_cnt += le32_to_cpu(mu_stats->dl.he_5to8ru_cnt);
+	phy->mib.rx_he_9to16ru_cnt += le32_to_cpu(mu_stats->dl.he_9to16ru_cnt);
+	phy->mib.rx_he_gtr16ru_cnt += le32_to_cpu(mu_stats->dl.he_gtr16ru_cnt);
+
+	phy->mib.tx_hetrig_su_cnt += le32_to_cpu(mu_stats->ul.hetrig_su_cnt);
+	phy->mib.tx_hetrig_2ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_2ru_cnt);
+	phy->mib.tx_hetrig_3ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_3ru_cnt);
+	phy->mib.tx_hetrig_4ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_4ru_cnt);
+	phy->mib.tx_hetrig_5to8ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_5to8ru_cnt);
+	phy->mib.tx_hetrig_9to16ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_9to16ru_cnt);
+	phy->mib.tx_hetrig_gtr16ru_cnt += le32_to_cpu(mu_stats->ul.hetrig_gtr16ru_cnt);
+	phy->mib.tx_hetrig_2mu_cnt += le32_to_cpu(mu_stats->ul.hetrig_2mu_cnt);
+	phy->mib.tx_hetrig_3mu_cnt += le32_to_cpu(mu_stats->ul.hetrig_3mu_cnt);
+	phy->mib.tx_hetrig_4mu_cnt += le32_to_cpu(mu_stats->ul.hetrig_4mu_cnt);
+
 	dev_kfree_skb(skb);
 
 	return 0;
