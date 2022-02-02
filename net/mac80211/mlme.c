@@ -846,6 +846,7 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 	/* get a max size estimate */
 	ieee80211_adjust_he_cap(&my_cap, he_cap, conn_flags);
 
+	/* get a max size estimate */
 	he_cap_size =
 		2 + 1 + sizeof(my_cap.he_cap_elem) +
 		ieee80211_he_mcs_nss_size(&my_cap.he_cap_elem) +
@@ -854,7 +855,7 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 	pos = skb_put(skb, he_cap_size);
 	pre_he_pos = pos;
 	pos = ieee80211_ie_build_he_cap(sdata, conn_flags,
-					pos, he_cap, pos + he_cap_size);
+					pos, &my_cap, pos + he_cap_size);
 	/* trim excess if any */
 	skb_trim(skb, skb->len - (pre_he_pos + he_cap_size - pos));
 

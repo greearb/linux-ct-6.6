@@ -3429,7 +3429,7 @@ u8 *ieee80211_ie_build_he_cap(struct ieee80211_sub_if_data *sdata,
 	*pos++ = WLAN_EID_EXT_HE_CAPABILITY;
 
 	/* Fixed data */
-	memcpy(pos, &he_cap->he_cap_elem, sizeof(he_cap->he_cap_elem));
+	memcpy(pos, &elem, sizeof(elem));
 
 	/* Apply overrides as needed. */
 	if (disable_flags & IEEE80211_CONN_DISABLE_TWT) {
@@ -3463,7 +3463,7 @@ u8 *ieee80211_ie_build_he_cap(struct ieee80211_sub_if_data *sdata,
 		hec->phy_cap_info[2] &= ~IEEE80211_HE_PHY_CAP2_UL_MU_PARTIAL_MU_MIMO;
 	}
 
-	pos += sizeof(he_cap->he_cap_elem);
+	pos += sizeof(elem);
 
 	memcpy(pos, &he_cap->he_mcs_nss_supp, n);
 	pos += n;
