@@ -2693,9 +2693,9 @@ int ath10k_sum_sigs_2(int a, int b) {
 		diff = a - b;
 		if (diff == 0)
 			return a + 3;
-		else if (diff == 1)
+		else if (diff <= 2)
 			return a + 2;
-		else if (diff == 2)
+		else if (diff <= 6)
 			return a + 1;
 		return a;
 	}
@@ -2704,9 +2704,9 @@ int ath10k_sum_sigs_2(int a, int b) {
 		diff = b - a;
 		if (diff == 0)
 			return b + 3;
-		else if (diff == 1)
+		else if (diff <= 2)
 			return b + 2;
-		else if (diff == 2)
+		else if (diff <= 6)
 			return b + 1;
 		return b;
 	}
