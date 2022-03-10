@@ -512,7 +512,7 @@ static void mt7921_mac_tx_free(struct mt792x_dev *dev, void *data, int len)
 
 	for (i = 0; i < count; i++) {
 		u32 msdu, info = le32_to_cpu(tx_info[i]);
-		u8 stat;
+		u32 tx_status, tx_cnt, ampdu;
 
 		/* 1'b1: new wcid pair.
 		 * 1'b0: msdu_id with the same 'wcid pair' as above.
@@ -538,19 +538,17 @@ static void mt7921_mac_tx_free(struct mt792x_dev *dev, void *data, int len)
 		}
 
 		msdu = FIELD_GET(MT_TX_FREE_MSDU_ID, info);
-		stat = FIELD_GET(MT_TX_FREE_STATUS, info);
 
-		if (wcid) {
-			wcid->stats.tx_retries +=
-				FIELD_GET(MT_TX_FREE_COUNT, info) - 1;
-			wcid->stats.tx_failed += !!stat;
-		}
+		/* 0 = success, 1 dropped-by-hw, 2 dropped-by-cpu */
+		tx_status = FIELD_GET(MT_TX_FREE_STATUS, info);
+		tx_cnt = FIELD_GET(MT_TX_FREE_COUNT, info);
+		ampdu = FIELD_GET(MT_TX_FREE_HEAD_OF_PAGE, info);
 
 		txwi = mt76_token_release(mdev, msdu, &wake);
 		if (!txwi)
 			continue;
 
-		mt76_connac2_txwi_free(mdev, txwi, sta, &free_list);
+		mt76_connac2_txwi_free(mdev, txwi, sta, &free_list, tx_cnt, tx_status, ampdu);
 	}
 
 	if (wake)
