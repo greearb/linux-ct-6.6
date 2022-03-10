@@ -39,8 +39,9 @@ enum {
 #define MT_TX_FREE_LATENCY		GENMASK(12, 0)
 /* when configured for txcount mode.  See MT_PLE_HOST_RPT0_TX_LATENCY. */
 #define MT_TX_FREE_TXCNT		GENMASK(12, 0)
-/* 0: success, others: dropped */
+/* 0: success, others: dropped.  As defined for V1 descriptors. */
 #define MT_TX_FREE_STATUS		GENMASK(14, 13)
+#define MT_TX_FREE_HEAD_OF_PAGE         BIT(15)
 #define MT_TX_FREE_MSDU_ID		GENMASK(30, 16)
 #define MT_TX_FREE_PAIR			BIT(31)
 /* will support this field in further revision */
