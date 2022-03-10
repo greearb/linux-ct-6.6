@@ -904,6 +904,7 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 	for (cur_info = tx_info; count < total; cur_info++) {
 		u32 msdu, info;
 		u8 i;
+		u32 tx_cnt = 0, tx_status = 0, ampdu = 1;
 
 		if (WARN_ON_ONCE((void *)cur_info >= end))
 			return;
@@ -933,21 +934,14 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 		}
 
 		if (!mtk_wed_device_active(&mdev->mmio.wed) && wcid) {
-			u32 tx_retries = 0, tx_failed = 0;
-
 			if (v3 && (info & MT_TX_FREE_MPDU_HEADER_V3)) {
-				tx_retries =
-					FIELD_GET(MT_TX_FREE_COUNT_V3, info) - 1;
-				tx_failed = tx_retries +
-					!!FIELD_GET(MT_TX_FREE_STAT_V3, info);
+				tx_cnt = FIELD_GET(MT_TX_FREE_COUNT_V3, info);
+				tx_status = FIELD_GET(MT_TX_FREE_STAT_V3, info);
 			} else if (!v3 && (info & MT_TX_FREE_MPDU_HEADER)) {
-				tx_retries =
-					FIELD_GET(MT_TX_FREE_COUNT, info) - 1;
-				tx_failed = tx_retries +
-					!!FIELD_GET(MT_TX_FREE_STAT, info);
+				tx_cnt = FIELD_GET(MT_TX_FREE_COUNT, info);
+				tx_status = FIELD_GET(MT_TX_FREE_STAT, info);
+				ampdu = FIELD_GET(MT_TX_FREE_HEAD_OF_PAGE, info);
 			}
-			wcid->stats.tx_retries += tx_retries;
-			wcid->stats.tx_failed += tx_failed;
 		}
 
 		if (v3 && (info & MT_TX_FREE_MPDU_HEADER_V3))
@@ -966,7 +960,9 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 			if (!txwi)
 				continue;
 
-			mt76_connac2_txwi_free(mdev, txwi, sta, &free_list);
+			mt76_connac2_txwi_free(mdev, txwi, sta, &free_list, tx_cnt, tx_status, ampdu);
+			/* don't count retries twice, in case we are v3 */
+			tx_cnt = 1;
 		}
 	}
 
@@ -998,7 +994,10 @@ mt7915_mac_tx_free_v0(struct mt7915_dev *dev, void *data, int len)
 		if (!txwi)
 			continue;
 
-		mt76_connac2_txwi_free(mdev, txwi, NULL, &free_list);
+		/* TODO: Can we report tx_cnt, status, ampdu in this path? */
+		mt76_connac2_txwi_free(mdev, txwi, NULL, &free_list,
+				       1 /* tx_cnt */, 0 /* tx-status-ok */,
+				       1/* ampdu */);
 	}
 
 	mt7915_mac_tx_free_done(dev, &free_list, wake);
