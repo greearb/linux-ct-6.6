@@ -2336,12 +2336,12 @@ int mt7915_dfs_stop_radar_detector(struct mt7915_phy *phy, bool ext_phy)
 {
 	struct mt7915_dev *dev = phy->dev;
 	int err;
-
-	dev_dbg(dev->mt76.dev, "dfs-stop-radar-detector, rdd-state: 0x%x",
-		phy->rdd_state);
+	int rv;
 
 	err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_NORMAL_START, ext_phy,
 				      MT_RX_SEL0, 0);
+	dev_info(dev->mt76.dev, "dfs-stop-radar-detector, rdd-state: 0x%x  rv: %d",
+		 phy->rdd_state, err);
 	if (err < 0) {
 		dev_err(dev->mt76.dev, "mcu-rdd-cmd RDD_NORMAL_START failed: %d",
 			err);
@@ -2356,13 +2356,18 @@ int mt7915_dfs_stop_radar_detector(struct mt7915_phy *phy, bool ext_phy)
 			return err;
 	}
 
-	if (phy->rdd_state & BIT(0))
-		mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, 0,
-					MT_RX_SEL0, 0);
-	if (phy->rdd_state & BIT(1))
-		mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, 1,
-					MT_RX_SEL0, 0);
-
+	if (phy->rdd_state & BIT(0)) {
+		rv = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, 0,
+					     MT_RX_SEL0, 0);
+		dev_info(dev->mt76.dev, "dfs-stop-radar-detector, RDD_STOP idx 0, rv: %d",
+			 rv);
+	}
+	if (phy->rdd_state & BIT(1)) {
+		rv = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_STOP, 1,
+					     MT_RX_SEL0, 0);
+		dev_info(dev->mt76.dev, "dfs-stop-radar-detector, RDD_STOP idx 1, rv: %d",
+			 rv);
+	}
 	phy->rdd_state = 0;
 
 	return err;
@@ -2387,8 +2392,7 @@ static int mt7915_dfs_start_rdd(struct mt7915_dev *dev, int chain)
 
 	err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_START, chain,
 				      MT_RX_SEL0, region);
-
-	dev_dbg(dev->mt76.dev, "dfs-start-rdd, RDD_START rv: %d", err);
+	dev_info(dev->mt76.dev, "dfs-start-rdd, RDD_START rv: %d", err);
 	if (err < 0)
 		return err;
 
@@ -2412,6 +2416,7 @@ static int mt7915_dfs_start_radar_detector(struct mt7915_phy *phy)
 	/* start CAC */
 	err = mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_CAC_START,
 				      phy->mt76->band_idx, MT_RX_SEL0, 0);
+	dev_info(dev->mt76.dev, "dfs-start-radar-detector, RDD_CAC_START rv: %d", err);
 	if (err < 0)
 		return err;
 
@@ -2551,13 +2556,13 @@ int mt7915_dfs_init_radar_detector(struct mt7915_phy *phy)
 	if (phy->rdd_state) {
 		if (chandef->chan->dfs_state == NL80211_DFS_AVAILABLE) {
 			/* CAC is already complete. */
-			dev_dbg(dev->mt76.dev,
-				"init-radar, RADAR started and DFS state is AVAILABLE, call RDD_CAC_END");
+			dev_info(dev->mt76.dev,
+				"dfs: init-radar, RADAR started and DFS state is AVAILABLE, call RDD_CAC_END");
 			return mt76_connac_mcu_rdd_cmd(&dev->mt76, RDD_CAC_END, ext_phy,
 						       MT_RX_SEL0, 0);
 		}
-		dev_dbg(dev->mt76.dev,
-			"init-radar, rdd_state indicates RADAR already started,"
+		dev_info(dev->mt76.dev,
+			"dfs: init-radar, rdd_state indicates RADAR already started,"
 			" DFS state: %d not YET available, rdd_state: 0x%x",
 			chandef->chan->dfs_state, phy->rdd_state);
 		return 0;
