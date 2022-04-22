@@ -202,8 +202,8 @@ mt7915_mcu_parse_response(struct mt76_dev *mdev, int cmd,
 	if (seq != rxd->seq &&
 	    !(rxd->eid == MCU_CMD_EXT_CID &&
 	      rxd->ext_eid == MCU_EXT_EVENT_WA_TX_STAT)) {
-		dev_err(mdev->dev, "ERROR: MCU:  Sequence mismatch in response, seq: %d  rxd->seq: %d cmd: %0x\n",
-			seq, rxd->seq, cmd);
+		dev_info(mdev->dev, "ERROR: MCU:  Sequence mismatch in response, seq: %d  rxd->seq: %d cmd: %0x\n",
+			 seq, rxd->seq, cmd);
 		return -EAGAIN;
 	}
 
