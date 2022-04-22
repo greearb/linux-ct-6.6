@@ -197,8 +197,8 @@ mt7915_mcu_parse_response(struct mt76_dev *mdev, int cmd,
 
 	rxd = (struct mt76_connac2_mcu_rxd *)skb->data;
 	if (seq != rxd->seq) {
-		dev_err(mdev->dev, "ERROR: MCU:  Sequence mismatch in response, seq: %d  rxd->seq: %d cmd: %0x\n",
-			seq, rxd->seq, cmd);
+		dev_info(mdev->dev, "ERROR: MCU:  Sequence mismatch in response, seq: %d  rxd->seq: %d cmd: %0x\n",
+			 seq, rxd->seq, cmd);
 		return -EAGAIN;
 	}
 
