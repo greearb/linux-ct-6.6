@@ -742,6 +742,7 @@ void mt7915_mac_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
 {
 	struct mt7915_dev *dev = container_of(mdev, struct mt7915_dev, mt76);
 	struct mt7915_sta *msta = (struct mt7915_sta *)sta->drv_priv;
+	struct mt76_wcid *wcid = &msta->wcid;
 	int i;
 
 	mt7915_mcu_add_sta(dev, vif, sta, false);
@@ -758,6 +759,15 @@ void mt7915_mac_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
 	if (!list_empty(&msta->rc_list))
 		list_del_init(&msta->rc_list);
 	spin_unlock_bh(&dev->sta_poll_lock);
+
+	if (WARN_ON(!idr_is_empty(&wcid->pktid))) {
+		mt76_tx_status_check(mdev, true);
+	}
+
+	spin_lock_bh(&mdev->status_lock);
+	if (WARN_ON(!list_empty(&wcid->list)))
+		list_del_init(&wcid->list);
+	spin_unlock_bh(&mdev->status_lock);
 }
 
 static void mt7915_tx(struct ieee80211_hw *hw,
