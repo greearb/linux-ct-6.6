@@ -535,4 +535,10 @@ mt7915_get_power_bound(struct mt7915_phy *phy, s8 txpower)
 	return txpower;
 }
 
+/* MURU */
+#define OFDMA_DL                       BIT(0)
+#define OFDMA_UL                       BIT(1)
+#define MUMIMO_DL                      BIT(2)
+#define MUMIMO_UL                      BIT(3)
+
 #endif
