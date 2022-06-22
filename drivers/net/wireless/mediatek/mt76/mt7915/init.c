@@ -705,6 +705,7 @@ static void mt7915_init_work(struct work_struct *work)
 	mt7915_init_txpower(dev, &dev->mphy.sband_5g.sband);
 	mt7915_init_txpower(dev, &dev->mphy.sband_6g.sband);
 	mt7915_txbf_init(dev);
+	dev->dbg.muru_onoff = OFDMA_DL | MUMIMO_UL | MUMIMO_DL;
 }
 
 void mt7915_wfsys_reset(struct mt7915_dev *dev)

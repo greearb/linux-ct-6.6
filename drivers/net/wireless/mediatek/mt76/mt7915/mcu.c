@@ -909,9 +909,13 @@ mt7915_mcu_sta_muru_tlv(struct mt7915_dev *dev, struct sk_buff *skb,
 
 	muru = (struct sta_rec_muru *)tlv;
 
-	muru->cfg.mimo_dl_en = vif->bss_conf.he_mu_beamformer ||
-			       vif->bss_conf.vht_mu_beamformer ||
-			       vif->bss_conf.vht_mu_beamformee;
+	muru->cfg.mimo_dl_en = ((vif->bss_conf.he_mu_beamformer ||
+				 vif->bss_conf.vht_mu_beamformer ||
+				 vif->bss_conf.vht_mu_beamformee) &&
+				!!(dev->dbg.muru_onoff & MUMIMO_DL));
+
+	muru->cfg.ofdma_dl_en = !!(dev->dbg.muru_onoff & OFDMA_DL);
+	muru->cfg.ofdma_ul_en = !!(dev->dbg.muru_onoff & OFDMA_UL);
 
 	/* The muru enable/disable are only set after the first station connection.
 	 * Without this patch, the firmware couldn't enable muru
@@ -919,9 +923,13 @@ mt7915_mcu_sta_muru_tlv(struct mt7915_dev *dev, struct sk_buff *skb,
 	 * the user has specifically disabled ofdma.
 	 */
 	if (!vif->bss_conf.he_ofdma_disable) {
-		if (!is_mt7915(&dev->mt76))
-			muru->cfg.mimo_ul_en = true;
-		muru->cfg.ofdma_dl_en = true;
+		if (!(dev->dbg.muru_onoff & MUMIMO_UL)) {
+			if (!is_mt7915(&dev->mt76))
+				muru->cfg.mimo_ul_en = true;
+		}
+		if (!(dev->dbg.muru_onoff & OFDMA_DL)) {
+			muru->cfg.ofdma_dl_en = true;
+		}
 	}
 
 	if (sta->deflink.vht_cap.vht_supported)
@@ -937,7 +945,9 @@ mt7915_mcu_sta_muru_tlv(struct mt7915_dev *dev, struct sk_buff *skb,
 	} else {
 		pr_info("STA: %pM  sta-muru-tlv, enabling OFDMA", sta->addr);
 
-		//muru->cfg.ofdma_ul_en = true;
+		if (!(dev->dbg.muru_onoff & OFDMA_UL)) {
+			muru->cfg.ofdma_ul_en = true;
+		}
 
 		muru->mimo_dl.partial_bw_dl_mimo =
 		HE_PHY(CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO, elem->phy_cap_info[6]);
