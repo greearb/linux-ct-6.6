@@ -49,6 +49,15 @@
 #define MT7986_EEPROM_MT7976_DEFAULT_DBDC	"mediatek/mt7986_eeprom_mt7976_dbdc.bin"
 #define MT7986_EEPROM_MT7976_DUAL_DEFAULT	"mediatek/mt7986_eeprom_mt7976_dual.bin"
 
+#define MT7915_BIN_FILE			"mediatek/mt7915_binfile.bin"
+#define MT7915_BIN_FILE_DBDC	 	        "mediatek/mt7915_binfile_dbdc.bin"
+#define MT7916_BIN_FILE		        "mediatek/mt7916_binfile.bin"
+#define MT7986_BIN_FILE_MT7975			"mediatek/mt7986_binfile_mt7975.bin"
+#define MT7986_BIN_FILE_MT7975_DUAL		"mediatek/mt7986_binfile_mt7975_dual.bin"
+#define MT7986_BIN_FILE_MT7976			"mediatek/mt7986_binfile_mt7976.bin"
+#define MT7986_BIN_FILE_MT7976_DBDC		"mediatek/mt7986_binfile_mt7976_dbdc.bin"
+#define MT7986_BIN_FILE_MT7976_DUAL		"mediatek/mt7986_binfile_mt7976_dual.bin"
+
 #define MT7915_EEPROM_SIZE		3584
 #define MT7916_EEPROM_SIZE		4096
 
@@ -409,6 +418,7 @@ struct mt7915_dev {
 
 	bool dbdc_support;
 	bool flash_mode;
+	bool bin_file_mode;
 	bool muru_debug;
 	bool ibf;
 

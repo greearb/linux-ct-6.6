@@ -1126,6 +1126,7 @@ void mt76_seq_puts_array(struct seq_file *file, const char *str,
 int mt76_eeprom_init(struct mt76_dev *dev, int len);
 void mt76_eeprom_override(struct mt76_phy *phy);
 int mt76_get_of_eeprom(struct mt76_dev *dev, void *data, int offset, int len);
+bool mt76_check_bin_file_mode(struct mt76_dev *dev);
 
 struct mt76_queue *
 mt76_init_queue(struct mt76_dev *dev, int qid, int idx, int n_desc,

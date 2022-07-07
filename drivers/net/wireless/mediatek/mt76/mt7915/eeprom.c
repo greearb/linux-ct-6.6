@@ -50,26 +50,36 @@ static char *mt7915_eeprom_name(struct mt7915_dev *dev)
 {
 	switch (mt76_chip(&dev->mt76)) {
 	case 0x7915:
-		return dev->dbdc_support ?
-		       MT7915_EEPROM_DEFAULT_DBDC : MT7915_EEPROM_DEFAULT;
+		if (dev->bin_file_mode)
+			return dev->dbdc_support ?
+				MT7915_BIN_FILE_DBDC : MT7915_BIN_FILE;
+		else
+			return dev->dbdc_support ?
+				MT7915_EEPROM_DEFAULT_DBDC : MT7915_EEPROM_DEFAULT;
 	case 0x7986:
 		switch (mt7915_check_adie(dev, true)) {
 		case MT7976_ONE_ADIE_DBDC:
-			return MT7986_EEPROM_MT7976_DEFAULT_DBDC;
+			return dev->bin_file_mode ?
+			MT7986_BIN_FILE_MT7976_DBDC : MT7986_EEPROM_MT7976_DEFAULT_DBDC;
 		case MT7975_ONE_ADIE:
-			return MT7986_EEPROM_MT7975_DEFAULT;
+			return dev->bin_file_mode ?
+			MT7986_BIN_FILE_MT7975 : MT7986_EEPROM_MT7975_DEFAULT;
 		case MT7976_ONE_ADIE:
-			return MT7986_EEPROM_MT7976_DEFAULT;
+			return dev->bin_file_mode ?
+			MT7986_BIN_FILE_MT7976 : MT7986_EEPROM_MT7976_DEFAULT;
 		case MT7975_DUAL_ADIE:
-			return MT7986_EEPROM_MT7975_DUAL_DEFAULT;
+			return dev->bin_file_mode ?
+			MT7986_BIN_FILE_MT7975_DUAL : MT7986_EEPROM_MT7975_DUAL_DEFAULT;
 		case MT7976_DUAL_ADIE:
-			return MT7986_EEPROM_MT7976_DUAL_DEFAULT;
+			return dev->bin_file_mode ?
+			MT7986_BIN_FILE_MT7976_DUAL : MT7986_EEPROM_MT7976_DUAL_DEFAULT;
 		default:
 			break;
 		}
 		return NULL;
 	default:
-		return MT7916_EEPROM_DEFAULT;
+		return dev->bin_file_mode ?
+			MT7916_BIN_FILE : MT7916_EEPROM_DEFAULT;
 	}
 }
 
@@ -85,7 +95,10 @@ mt7915_eeprom_load_default(struct mt7915_dev *dev)
 		return ret;
 
 	if (!fw || !fw->data) {
-		dev_err(dev->mt76.dev, "Invalid default bin\n");
+		if (dev->bin_file_mode)
+			dev_err(dev->mt76.dev, "Invalid bin (bin file mode)\n");
+		else
+			dev_err(dev->mt76.dev, "Invalid default bin\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -235,12 +248,30 @@ int mt7915_eeprom_init(struct mt7915_dev *dev)
 {
 	int ret;
 
-	ret = mt7915_eeprom_load(dev);
+	dev->bin_file_mode = mt76_check_bin_file_mode(&dev->mt76);
+
+	if (dev->bin_file_mode) {
+		dev->mt76.eeprom.size = mt7915_eeprom_size(dev);
+		dev->mt76.eeprom.data = devm_kzalloc(dev->mt76.dev, dev->mt76.eeprom.size,
+						      GFP_KERNEL);
+		if (!dev->mt76.eeprom.data)
+			return -ENOMEM;
+		ret = mt7915_eeprom_load_default(dev);
+	} else {
+		ret = mt7915_eeprom_load(dev);
+	}
+
 	if (ret < 0) {
 		if (ret != -EINVAL)
 			return ret;
 
-		dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
+		if (dev->bin_file_mode) {
+			dev_warn(dev->mt76.dev, "bin file load fail, use default bin\n");
+			dev->bin_file_mode = false;
+		} else {
+			dev_warn(dev->mt76.dev, "eeprom load fail, use default bin\n");
+		}
+
 		ret = mt7915_eeprom_load_default(dev);
 		if (ret)
 			return ret;

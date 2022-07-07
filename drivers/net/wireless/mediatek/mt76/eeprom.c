@@ -103,6 +103,24 @@ out_put_node:
 }
 EXPORT_SYMBOL_GPL(mt76_get_of_eeprom);
 
+bool mt76_check_bin_file_mode(struct mt76_dev *dev)
+{
+	struct device_node *np = dev->dev->of_node;
+	const __be32 *bin_file_mode;
+	bool ret = false;
+
+	if (!np)
+		return false;
+
+	bin_file_mode = of_get_property(np, "bin_file_mode", NULL);
+	if (bin_file_mode && be32_to_cpu(*bin_file_mode))
+		ret = true;
+
+	of_node_put(np);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mt76_check_bin_file_mode);
+
 void
 mt76_eeprom_override(struct mt76_phy *phy)
 {
