@@ -408,6 +408,6 @@ int mt76_connac2_reverse_frag0_hdr_trans(struct ieee80211_vif *vif,
 int mt76_connac2_mac_fill_rx_rate(struct mt76_dev *dev,
 				  struct mt76_rx_status *status,
 				  struct ieee80211_supported_band *sband,
-				  __le32 *rxv, u8 *mode);
+				  __le32 *rxv, u8 *mode, u8 *nss);
 
 #endif /* __MT76_CONNAC_H */
