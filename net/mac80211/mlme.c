@@ -575,11 +575,11 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		return 0;
 
 	link_info(link,
-		  "AP %pM changed bandwidth, new config is %d.%03d MHz, width %d (%d.%03d/%d MHz) ifmgd-flags: 0x%x\n",
+		  "AP %pM changed bandwidth, new config is %d.%03d MHz, width %d (%d.%03d/%d MHz) ifmgd-flags: 0x%x eht-oper: %p\n",
 		  link->u.mgd.bssid, chandef.chan->center_freq,
 		  chandef.chan->freq_offset, chandef.width,
 		  chandef.center_freq1, chandef.freq1_offset,
-		  chandef.center_freq2, ifmgd->flags);
+		  chandef.center_freq2, ifmgd->flags, eht_oper);
 
 	if (flags != (link->u.mgd.conn_flags &
 				(IEEE80211_CONN_DISABLE_HT |
