@@ -760,7 +760,9 @@ void mt7915_mac_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
 		list_del_init(&msta->rc_list);
 	spin_unlock_bh(&dev->sta_poll_lock);
 
-	if (WARN_ON(!idr_is_empty(&wcid->pktid))) {
+	if (WARN_ON_ONCE(!idr_is_empty(&wcid->pktid))) {
+		dev_err(dev->mt76.dev,
+			"wcid->pktid is not empty in mac_sta_remove, will force status check to recover.\n");
 		mt76_tx_status_check(mdev, true);
 	}
 
