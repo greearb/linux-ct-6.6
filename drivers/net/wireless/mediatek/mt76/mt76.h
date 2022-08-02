@@ -898,6 +898,15 @@ struct mt76_dev {
 	u32 stale_skb_status_check;
 	u32 stale_skb_status_timeout;
 
+	struct {
+		u32 hw_sw_ver;
+		char build_date[16];
+		char wm_fw_ver[12];
+		char wm_build_date[16];
+		char wa_fw_ver[12];
+		char wa_build_date[16];
+	} fw;
+
 #ifdef CONFIG_NL80211_TESTMODE
 	const struct mt76_testmode_ops *test_ops;
 	struct {
