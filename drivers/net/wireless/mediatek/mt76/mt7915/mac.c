@@ -1172,6 +1172,7 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 	mt7915_mac_tx_free_prepare(dev);
 
 	total = le16_get_bits(free->ctrl, MT_TX_FREE_MSDU_CNT);
+	/* NOTE: 'v3' actually is checking for API version 4 */
 	v3 = (FIELD_GET(MT_TX_FREE_VER, txd) == 0x4);
 
 	for (cur_info = tx_info; count < total; cur_info++) {
@@ -1187,7 +1188,7 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 		 * 1'b0: msdu_id with the same 'wcid pair' as above.
 		 */
 		info = le32_to_cpu(*cur_info);
-		if (info & MT_TX_FREE_PAIR) {
+		if (info & MT_TX_FREE_PAIR) { /* DW2 */
 			struct mt7915_sta *msta;
 			struct mt76_wcid *wcid;
 			u16 idx;
@@ -1206,19 +1207,19 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 			continue;
 		}
 
-		if (v3 && (info & MT_TX_FREE_MPDU_HEADER))
+		if (v3 && (info & MT_TX_FREE_MPDU_HEADER)) { /* DW3 */
+			tx_cnt = FIELD_GET(MT_TX_FREE_TXCNT_V3, info);
+			/* 0 = success, 1 dropped-by-hw, 2 dropped-by-cpu */
+			tx_status = FIELD_GET(MT_TX_FREE_STATUS_V3, info);
+			ampdu = 1;
 			continue;
+		}
 
 		for (i = 0; i < 1 + v3; i++) {
 			if (v3) {
 				msdu = (info >> (15 * i)) & MT_TX_FREE_MSDU_ID_V3;
 				if (msdu == MT_TX_FREE_MSDU_ID_V3)
 					continue;
-
-				/* TODO:  How to get tx_cnt, tx_status, ampdu*/
-				tx_status = 0;
-				tx_cnt = 1;
-				ampdu = 1;
 			} else {
 				msdu = FIELD_GET(MT_TX_FREE_MSDU_ID, info);
 
@@ -1233,6 +1234,13 @@ mt7915_mac_tx_free(struct mt7915_dev *dev, void *data, int len)
 				continue;
 
 			mt7915_txwi_free(dev, txwi, sta, &free_list, tx_cnt, tx_status, ampdu);
+
+			/* All msdu IDs share same tx-status as far as I can tell */
+			/* Assign any retries to the first msdu since secondaries may not exist */
+			if (v3) {
+				tx_cnt = 1;
+				ampdu = 0;
+			}
 		}
 	}
 

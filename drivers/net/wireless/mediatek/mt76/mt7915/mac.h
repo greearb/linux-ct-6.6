@@ -8,7 +8,6 @@
 
 #define MT_TX_FREE_VER			GENMASK(18, 16)
 #define MT_TX_FREE_MSDU_CNT_V0		GENMASK(6, 0)
-/* 0: success, others: dropped */
 #define MT_TX_FREE_MPDU_HEADER		BIT(30)
 #define MT_TX_FREE_MSDU_ID_V3		GENMASK(14, 0)
 
