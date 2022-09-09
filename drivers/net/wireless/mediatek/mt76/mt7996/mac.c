@@ -1274,6 +1274,9 @@ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
 	bool is_8023 = info->flags & IEEE80211_TX_CTL_HW_80211_ENCAP;
 	u8 *txwi = (u8 *)txwi_ptr;
 
+	mtk_dbg(&dev->mt76, TXV, "mt7996-tx-prepare-skb, skb-len: %d\n",
+		tx_info->skb->len);
+
 	if (unlikely(tx_info->skb->len <= ETH_HLEN))
 		return -EINVAL;
 
@@ -1293,8 +1296,11 @@ int mt7996_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
 	t->skb = tx_info->skb;
 
 	id = mt76_token_consume(mdev, &t);
-	if (id < 0)
+	if (id < 0) {
+		mtk_dbg(&dev->mt76, TXV, "mt7996-tx-prepare-skb, token_consume error: %d\n",
+			id);
 		return id;
+	}
 
 	pid = mt76_tx_status_skb_add(mdev, wcid, tx_info->skb);
 	mt7996_mac_write_txwi(dev, txwi_ptr, tx_info->skb, wcid, key,
@@ -1514,6 +1520,9 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
 			idx = FIELD_GET(MT_TXFREE_INFO_WLAN_ID, info);
 			wcid = rcu_dereference(dev->mt76.wcid[idx]);
 			sta = wcid_to_sta(wcid);
+
+			mtk_dbg(mdev, TXV, "mt7996-mac-tx-free, new wcid pair, idx: %d sta: %p wcid: %p\n",
+				idx, sta, wcid);
 			if (!sta)
 				continue;
 
@@ -1541,8 +1550,14 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
 
 			count++;
 			txwi = mt76_token_release(mdev, msdu, &wake);
-			if (!txwi)
+
+			mtk_dbg(mdev, TXV, "mt7996-mac-tx-free, msdu: %d, tx-cnt: %d  t_status: %d count: %d/%d\n",
+				msdu, tx_cnt, tx_status, count, total);
+
+			if (!txwi) {
+				WARN_ON_ONCE(1);
 				continue;
+			}
 
 			mt7996_txwi_free(dev, txwi, sta, &free_list, tx_cnt, tx_status, ampdu);
 		}
@@ -1721,6 +1736,9 @@ static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
 	if (le32_get_bits(txs_data[0], MT_TXS0_TXS_FORMAT) > 1)
 		return;
 
+	mtk_dbg(&dev->mt76, TX, "mt7996-mac-add-txs, format: %d\n",
+		le32_get_bits(txs_data[0], MT_TXS0_TXS_FORMAT));
+
 	wcidx = le32_get_bits(txs_data[2], MT_TXS2_WCID);
 	pid = le32_get_bits(txs_data[3], MT_TXS3_PID);
 
@@ -1779,7 +1797,12 @@ bool mt7996_rx_check(struct mt76_dev *mdev, void *data, int len)
 	case PKT_TYPE_RX_FW_MONITOR:
 		mt7996_debugfs_rx_fw_monitor(dev, data, len);
 		return false;
+	case PKT_TYPE_RX_EVENT:
+	case PKT_TYPE_NORMAL:
+		/* These are handled elsewhere, do not warn about them. */
+		return true;
 	default:
+		mtk_dbg(mdev, MSG, "mt7996-rx-check, pkt-type: %d not handled.\n", type);
 		return true;
 	}
 }
@@ -1825,6 +1848,7 @@ void mt7996_queue_rx_skb(struct mt76_dev *mdev, enum mt76_rxq_id q,
 		}
 		fallthrough;
 	default:
+		mtk_dbg(mdev, MSG, "mt7996-mac-queue-rx-skb, unhandled type: %d\n", type);
 		dev_kfree_skb(skb);
 		break;
 	}
