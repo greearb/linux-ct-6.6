@@ -7,6 +7,18 @@
 #include "mcu.h"
 #include "mac.h"
 
+static u32 debug_lvl = MTK_DEBUG_FATAL | MTK_DEBUG_WRN;
+module_param(debug_lvl, uint, 0644);
+MODULE_PARM_DESC(debug_lvl,
+		 "Enable debugging messages\n"
+		 "0x00001	tx path\n"
+		 "0x00002	tx path verbose\n"
+		 "0x00004	fatal/very-important messages\n"
+		 "0x00008	warning messages\n"
+		 "0x00010	Info about messages to/from firmware\n"
+		 "0xffffffff	any/all\n"
+	);
+
 static bool mt7996_dev_running(struct mt7996_dev *dev)
 {
 	struct mt7996_phy *phy;
@@ -75,6 +87,8 @@ static int mt7996_start(struct ieee80211_hw *hw)
 {
 	struct mt7996_dev *dev = mt7996_hw_dev(hw);
 	int ret;
+
+	dev->mt76.debug_lvl = debug_lvl;
 
 	flush_work(&dev->init_work);
 
@@ -750,6 +764,9 @@ static void mt7996_tx(struct ieee80211_hw *hw,
 		mvif = (struct mt7996_vif *)vif->drv_priv;
 		wcid = &mvif->sta.wcid;
 	}
+
+	mtk_dbg(&dev->mt76, TXV, "mt7996-tx, wcid: %d\n",
+		wcid->idx);
 
 	mt76_tx(mphy, control->sta, wcid, skb);
 }
