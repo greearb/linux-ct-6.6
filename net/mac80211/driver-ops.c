@@ -106,8 +106,9 @@ void drv_remove_interface(struct ieee80211_local *local,
 {
 	might_sleep();
 
-	if (!check_sdata_in_driver(sdata))
-		return;
+	if (!check_sdata_in_driver(sdata)) {
+		pr_err("drv-remove-interface, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+	}
 
 	trace_drv_remove_interface(local, sdata);
 	local->ops->remove_interface(&local->hw, &sdata->vif);
