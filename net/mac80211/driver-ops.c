@@ -119,8 +119,9 @@ void drv_remove_interface(struct ieee80211_local *local,
 	might_sleep();
 	lockdep_assert_wiphy(local->hw.wiphy);
 
-	if (!check_sdata_in_driver(sdata))
-		return;
+	if (!check_sdata_in_driver(sdata)) {
+		pr_err("drv-remove-interface, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+	}
 
 	sdata->flags &= ~IEEE80211_SDATA_IN_DRIVER;
 
