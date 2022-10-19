@@ -2119,6 +2119,19 @@ static int ieee80211_del_station(struct wiphy *wiphy, struct net_device *dev,
 	return 0;
 }
 
+void ieee80211_del_all_station(struct ieee80211_hw *hw)
+{
+	struct ieee80211_local *local = hw_to_local(hw);
+	struct sta_info *sta, *tmp;
+
+	mutex_lock(&local->hw.wiphy->mtx);
+	list_for_each_entry_safe(sta, tmp, &local->sta_list, list) {
+		WARN_ON(__sta_info_destroy(sta));
+	}
+	mutex_unlock(&local->hw.wiphy->mtx);
+}
+EXPORT_SYMBOL(ieee80211_del_all_station);
+
 static int ieee80211_change_station(struct wiphy *wiphy,
 				    struct net_device *dev, const u8 *mac,
 				    struct station_parameters *params)
