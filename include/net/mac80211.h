@@ -1832,7 +1832,6 @@ struct ieee80211_vif_cfg {
 	bool assoc, ibss_joined;
 	bool ibss_creator;
 	bool ps;
-	bool he_ofdma_disable; /* Ask driver to disable OFDMA */
 	u16 aid;
 	u16 eml_cap;
 	u16 eml_med_sync_delay;
@@ -2303,6 +2302,7 @@ struct ieee80211_link_sta {
 
 typedef u32 __bitwise ieee80211_conn_flags_t;
 
+/* In ieee80211_i.h in upstream --Ben */
 enum ieee80211_conn_flags {
 	IEEE80211_CONN_DISABLE_HT	= (__force ieee80211_conn_flags_t)BIT(0),
 	IEEE80211_CONN_DISABLE_40MHZ	= (__force ieee80211_conn_flags_t)BIT(1),

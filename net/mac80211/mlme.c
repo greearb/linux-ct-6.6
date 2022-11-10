@@ -845,7 +845,6 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 	if (WARN_ON(!he_cap))
 		return;
 
-	/* get a max size estimate */
 	ieee80211_adjust_he_cap(&my_cap, he_cap, conn_flags);
 
 	/* get a max size estimate */
