@@ -2727,4 +2727,38 @@ int iwl_mvm_set_hw_timestamp(struct ieee80211_hw *hw,
 			     struct ieee80211_vif *vif,
 			     struct cfg80211_set_hw_timestamp *hwts);
 int iwl_mvm_update_mu_groups(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+
+static inline int iwl_mvm_sum_sigs_2(int a, int b)
+{
+       int diff;
+
+       /* S8_MIN means value-is-not-set */
+       if (b == S8_MIN)
+               return a;
+       if (a == S8_MIN)
+               return b;
+
+       if (a >= b) {
+               /* a is largest value, add to it. */
+               diff = a - b;
+               if (diff == 0)
+                       return a + 3;
+               else if (diff <= 2)
+                       return a + 2;
+               else if (diff <= 6)
+                       return a + 1;
+               return a;
+       } else {
+               /* b is largest value, add to it. */
+               diff = b - a;
+               if (diff == 0)
+                       return b + 3;
+               else if (diff <= 2)
+                       return b + 2;
+               else if (diff <= 6)
+                       return b + 1;
+               return b;
+       }
+}
+
 #endif /* __IWL_MVM_H__ */
