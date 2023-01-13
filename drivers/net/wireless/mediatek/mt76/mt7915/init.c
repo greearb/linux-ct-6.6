@@ -1229,7 +1229,6 @@ int mt7915_register_device(struct mt7915_dev *dev)
 	if (ret)
 		goto unreg_dev;
 
-	ieee80211_queue_work(mt76_hw(dev), &dev->init_work);
 
 	if (phy2) {
 		ret = mt7915_register_ext_phy(dev, phy2);
@@ -1238,6 +1237,8 @@ int mt7915_register_device(struct mt7915_dev *dev)
 	}
 
 	dev->recovery.hw_init_done = true;
+
+	ieee80211_queue_work(mt76_hw(dev), &dev->init_work);
 
 	ret = mt7915_init_debugfs(&dev->phy);
 	if (ret)
