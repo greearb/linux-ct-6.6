@@ -1025,6 +1025,8 @@ int mt7921_mcu_set_beacon_filter(struct mt7921_dev *dev,
 #define MT7921_FIF_BIT_SET		BIT(0)
 	int err;
 
+	dev->beacon_filter_setting = enable;
+
 	if (enable) {
 		err = mt7921_mcu_uni_bss_bcnft(dev, vif, true);
 		if (err)

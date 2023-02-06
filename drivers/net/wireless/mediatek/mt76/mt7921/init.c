@@ -7,6 +7,9 @@
 #include "../mt76_connac2_mac.h"
 #include "mcu.h"
 
+extern bool mt7921_disable_pm;
+extern bool mt7921_disable_deep_sleep;
+
 static const struct ieee80211_iface_limit if_limits[] = {
 	{
 		.max = MT7921_MAX_INTERFACES,
@@ -135,7 +138,6 @@ mt7921_init_wiphy(struct ieee80211_hw *hw)
 	ieee80211_hw_set(hw, SUPPORTS_PS);
 	ieee80211_hw_set(hw, SUPPORTS_DYNAMIC_PS);
 	ieee80211_hw_set(hw, SUPPORTS_VHT_EXT_NSS_BW);
-	ieee80211_hw_set(hw, CONNECTION_MONITOR);
 
 	if (dev->pm.enable)
 		ieee80211_hw_set(hw, CONNECTION_MONITOR);
@@ -282,6 +284,8 @@ static int __mt7921_init_hardware(struct mt7921_dev *dev)
 {
 	int ret;
 
+	dev->beacon_filter_setting = -1; /* initialize to un-set */
+
 	/* force firmware operation mode into normal state,
 	 * which should be set before firmware download stage.
 	 */
@@ -414,9 +418,9 @@ int mt7921_register_device(struct mt7921_dev *dev)
 	dev->pm.stats.last_doze_event = jiffies;
 	if (!mt76_is_usb(&dev->mt76)) {
 		dev->pm.enable_user = true;
-		dev->pm.enable = true;
+		dev->pm.enable = !mt7921_disable_pm;
 		dev->pm.ds_enable_user = true;
-		dev->pm.ds_enable = true;
+		dev->pm.ds_enable = !mt7921_disable_deep_sleep;
 	}
 
 	if (!mt76_is_mmio(&dev->mt76))

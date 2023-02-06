@@ -3,6 +3,9 @@
 
 #include "mt7921.h"
 
+extern bool mt7921_disable_pm;
+extern bool mt7921_disable_deep_sleep;
+
 static int
 mt7921_reg_set(void *data, u64 val)
 {
@@ -271,7 +274,7 @@ mt7921_pm_set(void *data, u64 val)
 
 	mutex_lock(&dev->mt76.mutex);
 
-	if (val == pm->enable_user)
+	if (val == pm->enable_user && val == pm->enable)
 		goto out;
 
 	if (!pm->enable_user) {
@@ -317,11 +320,11 @@ mt7921_deep_sleep_set(void *data, u64 val)
 		return -EOPNOTSUPP;
 
 	mt7921_mutex_acquire(dev);
-	if (pm->ds_enable_user == enable)
+	if (pm->ds_enable_user == enable && pm->ds_enable == enable)
 		goto out;
 
 	pm->ds_enable_user = enable;
-	pm->ds_enable = enable && !monitor;
+	pm->ds_enable = enable && !monitor && !mt7921_disable_deep_sleep;
 	mt76_connac_mcu_set_deep_sleep(&dev->mt76, pm->ds_enable);
 out:
 	mt7921_mutex_release(dev);
@@ -361,6 +364,13 @@ mt7921_pm_stats(struct seq_file *s, void *data)
 		   jiffies_to_msecs(doze_time));
 
 	seq_printf(s, "low power wakes: %9d\n", pm->stats.lp_wake);
+	seq_printf(s, "\nlast-beacon-filter-setting: %d\n", dev->beacon_filter_setting);
+	seq_printf(s, "pm.enable: %d\n", pm->enable);
+	seq_printf(s, "pm.user_enable: %d\n", pm->enable_user);
+	seq_printf(s, "pm.deep_sleep_enable: %d\n", pm->ds_enable);
+	seq_printf(s, "pm.user_deep_sleep_enable: %d\n", pm->ds_enable_user);
+	seq_printf(s, "modparm-disable-pm: %d\n", mt7921_disable_pm);
+	seq_printf(s, "modparm-disable-deep-sleep-pm: %d\n", mt7921_disable_deep_sleep);
 
 	return 0;
 }

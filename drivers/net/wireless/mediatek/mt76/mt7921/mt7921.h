@@ -333,6 +333,7 @@ struct mt7921_dev {
 
 	u8 fw_debug;
 	u8 fw_features;
+	s8 beacon_filter_setting; /* -1 not set, 0 disabled, 1 enabled */
 
 	struct mt76_connac_pm pm;
 	struct mt76_connac_coredump coredump;
