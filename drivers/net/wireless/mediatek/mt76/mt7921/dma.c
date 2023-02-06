@@ -161,8 +161,11 @@ int mt7921_wfsys_reset(struct mt7921_dev *dev)
 	mt76_set(dev, MT_WFSYS_SW_RST_B, WFSYS_SW_RST_B);
 
 	if (!__mt76_poll_msec(&dev->mt76, MT_WFSYS_SW_RST_B,
-			      WFSYS_SW_INIT_DONE, WFSYS_SW_INIT_DONE, 500))
+			      WFSYS_SW_INIT_DONE, WFSYS_SW_INIT_DONE, 500)) {
+		dev_info(dev->mt76.dev,
+			 "%s failed with timeout", __func__);
 		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
@@ -224,66 +227,91 @@ int mt7921_wpdma_reinit_cond(struct mt7921_dev *dev)
 int mt7921_dma_init(struct mt7921_dev *dev)
 {
 	int ret;
+	int i;
 
 	mt76_dma_attach(&dev->mt76);
 
-	ret = mt7921_dma_disable(dev, true);
-	if (ret)
-		return ret;
+	for (i = 0; i < 3; i++) {
+		ret = mt7921_dma_disable(dev, true);
+		if (ret == 0)
+			break;
+		dev_info(dev->mt76.dev,
+			 "mt7921_dma_disable failed: %d (try %d/3)", ret, i);
+	}
+
+	if (ret < 0)
+		return ret; /* all dma disable retries failed */
 
 	/* init tx queue */
 	ret = mt76_connac_init_tx_queues(dev->phy.mt76, MT7921_TXQ_BAND0,
 					 MT7921_TX_RING_SIZE,
 					 MT_TX_RING_BASE, 0);
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_connac_init_tx_queues failed: %d", ret);
 		return ret;
+	}
 
 	mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, 0x4);
 
 	/* command to WM */
 	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_WM, MT7921_TXQ_MCU_WM,
 				  MT7921_TX_MCU_RING_SIZE, MT_TX_RING_BASE);
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_init_mcu_queue failed: %d", ret);
 		return ret;
+	}
 
 	/* firmware download */
 	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_FWDL, MT7921_TXQ_FWDL,
 				  MT7921_TX_FWDL_RING_SIZE, MT_TX_RING_BASE);
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_init_mcu_queue failed: %d", ret);
 		return ret;
+	}
 
 	/* event from WM before firmware download */
 	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MCU],
 			       MT7921_RXQ_MCU_WM,
 			       MT7921_RX_MCU_RING_SIZE,
 			       MT_RX_BUF_SIZE, MT_RX_EVENT_RING_BASE);
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_queue_alloc failed: %d", ret);
 		return ret;
+	}
 
 	/* Change mcu queue after firmware download */
 	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MCU_WA],
 			       MT7921_RXQ_MCU_WM,
 			       MT7921_RX_MCU_RING_SIZE,
 			       MT_RX_BUF_SIZE, MT_WFDMA0(0x540));
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_queue_alloc (after-fw-download) failed: %d", ret);
 		return ret;
+	}
 
 	/* rx data */
 	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MAIN],
 			       MT7921_RXQ_BAND0, MT7921_RX_RING_SIZE,
 			       MT_RX_BUF_SIZE, MT_RX_DATA_RING_BASE);
-	if (ret)
+	if (ret) {
+		dev_info(dev->mt76.dev, "mt76_queue_alloc (rx-data) failed: %d", ret);
 		return ret;
+	}
 
 	ret = mt76_init_queues(dev, mt7921_poll_rx);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(dev->mt76.dev, "mt76_init_queues failed: %d", ret);
 		return ret;
+	}
 
 	netif_napi_add_tx(&dev->mt76.tx_napi_dev, &dev->mt76.tx_napi,
 			  mt7921_poll_tx);
 	napi_enable(&dev->mt76.tx_napi);
 
-	return mt7921_dma_enable(dev);
+	ret = mt7921_dma_enable(dev);
+	if (ret < 0)
+		dev_info(dev->mt76.dev, "mt7921_dma_enable failed: %d", ret);
+	return ret;
 }
 
 void mt7921_dma_cleanup(struct mt7921_dev *dev)
