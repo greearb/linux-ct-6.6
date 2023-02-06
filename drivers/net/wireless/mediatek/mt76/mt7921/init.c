@@ -10,6 +10,9 @@
 #include "../mt76_connac2_mac.h"
 #include "mcu.h"
 
+extern bool mt7921_disable_pm;
+extern bool mt7921_disable_deep_sleep;
+
 static ssize_t mt7921_thermal_temp_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
@@ -289,9 +292,9 @@ int mt7921_register_device(struct mt792x_dev *dev)
 	dev->pm.stats.last_doze_event = jiffies;
 	if (!mt76_is_usb(&dev->mt76)) {
 		dev->pm.enable_user = true;
-		dev->pm.enable = true;
+		dev->pm.enable = !mt7921_disable_pm;
 		dev->pm.ds_enable_user = true;
-		dev->pm.ds_enable = true;
+		dev->pm.ds_enable = !mt7921_disable_deep_sleep;
 	}
 
 	if (!mt76_is_mmio(&dev->mt76))
