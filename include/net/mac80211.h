@@ -7042,13 +7042,13 @@ void ieee80211_enable_rssi_reports(struct ieee80211_vif *vif,
 void ieee80211_disable_rssi_reports(struct ieee80211_vif *vif);
 
 /**
- * ieee80211_ave_rssi - report the average RSSI for the specified interface
+ * ieee80211_ave_rssi - report the average beacon RSSI for the specified interface
  *
  * @vif: the specified virtual interface
  *
  * Note: This function assumes that the given vif is valid.
  *
- * Return: The average RSSI value for the requested interface, or 0 if not
+ * Return: The average beacon RSSI value for the requested interface, or 0 if not
  * applicable.
  */
 int ieee80211_ave_rssi(struct ieee80211_vif *vif);
