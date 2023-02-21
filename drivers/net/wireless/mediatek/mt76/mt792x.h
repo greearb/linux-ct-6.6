@@ -187,6 +187,7 @@ struct mt792x_dev {
 	bool hw_init_done:1;
 	bool fw_assert:1;
 	bool has_eht:1;
+	bool hw_registered:1;
 
 	struct work_struct init_work;
 
