@@ -368,6 +368,7 @@ static void mt7921_init_work(struct work_struct *work)
 		dev_err(dev->mt76.dev, "register device failed\n");
 		return;
 	}
+	dev->hw_registered = true;
 
 	ret = mt7921_init_debugfs(dev);
 	if (ret) {

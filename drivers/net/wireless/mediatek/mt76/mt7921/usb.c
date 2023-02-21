@@ -290,7 +290,8 @@ static void mt7921u_disconnect(struct usb_interface *usb_intf)
 	if (!test_bit(MT76_STATE_INITIALIZED, &dev->mphy.state))
 		return;
 
-	mt76_unregister_device(&dev->mt76);
+	if (dev->hw_registered)
+		mt76_unregister_device(&dev->mt76);
 	mt7921u_cleanup(dev);
 
 	usb_set_intfdata(usb_intf, NULL);
