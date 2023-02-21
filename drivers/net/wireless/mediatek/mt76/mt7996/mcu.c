@@ -381,6 +381,11 @@ mt7996_mcu_rx_radar_detected(struct mt7996_dev *dev, struct sk_buff *skb)
 
 	r = (struct mt7996_mcu_rdd_report *)skb->data;
 
+	dev_info(dev->mt76.dev, "rx-radar-detected: band-idx: %d long_detected: %d const_prf_det %d staggered_prf_det: %d"
+		 " radar_type_idx: %d periodic_pulse_num: %d  long_pulse_num: %d hw_pulse_num: %d",
+		 r->band_idx, r->long_detected, r->constant_prf_detected, r->staggered_prf_detected,
+		 r->radar_type_idx, r->periodic_pulse_num, r->long_pulse_num, r->hw_pulse_num);
+
 	if (r->band_idx >= ARRAY_SIZE(dev->mt76.phys))
 		return;
 
