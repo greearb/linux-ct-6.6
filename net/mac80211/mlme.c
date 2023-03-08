@@ -571,6 +571,14 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	    chandef.width > NL80211_CHAN_WIDTH_20)
 		flags |= ieee80211_chandef_downgrade(&chandef);
 
+	/* Relax check for implicit disabled. */
+	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_160MHZ &&
+	    chandef.width != NL80211_CHAN_WIDTH_160)
+		flags |= IEEE80211_CONN_DISABLE_160MHZ;
+	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_80P80MHZ &&
+	    chandef.width != NL80211_CHAN_WIDTH_80P80)
+		flags |= IEEE80211_CONN_DISABLE_80P80MHZ;
+
 	if (cfg80211_chandef_identical(&chandef, &link->conf->chandef))
 		return 0;
 
