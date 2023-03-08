@@ -579,6 +579,10 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	    chandef.width != NL80211_CHAN_WIDTH_80P80)
 		flags |= IEEE80211_CONN_DISABLE_80P80MHZ;
 
+	/* if ifmgd has HE disabled, then we cannot re-enable that here. */
+	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_HE)
+		flags |= IEEE80211_CONN_DISABLE_HE;
+
 	if (cfg80211_chandef_identical(&chandef, &link->conf->chandef))
 		return 0;
 
