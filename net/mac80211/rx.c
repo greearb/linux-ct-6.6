@@ -5304,7 +5304,7 @@ static void __ieee80211_rx_handle_packet(struct ieee80211_hw *hw,
 						  hdr->addr2);
 			if (sta) {
 				rx.sdata = sta->sdata;
-				if (!ieee80211_rx_data_set_sta(&rx, &sta->sta, link_id))
+				if (!ieee80211_rx_data_set_sta(&rx, sta, link_id))
 					goto out;
 
 				if (!status->link_valid && sta->sta.mlo)
