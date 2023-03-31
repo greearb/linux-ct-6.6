@@ -4944,10 +4944,6 @@ static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
 
 	sband = local->hw.wiphy->bands[cbss->channel->band];
 
-	*conn_flags &= ~(IEEE80211_CONN_DISABLE_40MHZ |
-			 IEEE80211_CONN_DISABLE_80P80MHZ |
-			 IEEE80211_CONN_DISABLE_160MHZ);
-
 	/* disable HT/VHT/HE if we don't support them */
 	if (!sband->ht_cap.ht_supported && !is_6ghz) {
 		mlme_dbg(sdata, "HT not supported, disabling HT/VHT/HE/EHT\n");
