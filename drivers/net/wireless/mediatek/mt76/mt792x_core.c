@@ -7,6 +7,10 @@
 #include "mt792x.h"
 #include "dma.h"
 
+static bool mt792x_allow_cnm;
+module_param_named(allow_cnm, mt792x_allow_cnm, bool, 0644);
+MODULE_PARM_DESC(allow_cnm, "Allow CAP_CNM firmware flag to enable AP + STA on different channels.  Set to false to allow 4 STA.");
+
 static const struct ieee80211_iface_limit if_limits[] = {
 	{
 		.max = MT792x_MAX_INTERFACES,
@@ -750,6 +754,9 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 
 out:
 	release_firmware(fw);
+
+	if (!mt792x_allow_cnm)
+		offload_caps &= ~MT792x_FW_CAP_CNM;
 
 	return offload_caps;
 }
