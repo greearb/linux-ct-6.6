@@ -10,6 +10,10 @@
 extern bool mt7921_disable_pm;
 extern bool mt7921_disable_deep_sleep;
 
+static bool mt7921_allow_cnm;
+module_param_named(allow_cnm, mt7921_allow_cnm, bool, 0644);
+MODULE_PARM_DESC(allow_cnm, "Allow CAP_CNM firmware flag to enable AP + STA on different channels.  Set to false to allow 4 STA.");
+
 static const struct ieee80211_iface_limit if_limits[] = {
 	{
 		.max = MT7921_MAX_INTERFACES,
@@ -228,6 +232,9 @@ mt7921_get_offload_capability(struct device *dev, const char *fw_wm)
 
 out:
 	release_firmware(fw);
+
+	if (!mt7921_allow_cnm)
+		offload_caps &= ~MT7921_FW_CAP_CNM;
 
 	return offload_caps;
 }
