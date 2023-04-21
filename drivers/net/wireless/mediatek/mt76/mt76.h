@@ -1277,6 +1277,11 @@ void mt76_mmio_wed_offload_disable(struct mtk_wed_device *wed);
 void mt76_mmio_wed_reset_complete(struct mtk_wed_device *wed);
 #endif /*CONFIG_NET_MEDIATEK_SOC_WED */
 
+static inline int mt76_vif_count(struct mt76_dev *dev)
+{
+	return hweight_long(dev->vif_mask);
+}
+
 #define mt76xx_chip(dev) mt76_chip(&((dev)->mt76))
 #define mt76xx_rev(dev) mt76_rev(&((dev)->mt76))
 
