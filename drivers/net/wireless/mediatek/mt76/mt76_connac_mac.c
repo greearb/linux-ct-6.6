@@ -1191,7 +1191,7 @@ int mt76_connac2_mac_fill_rx_rate(struct mt76_dev *dev,
 			stats->rx_nss[3]++;
 		else
 			stats->rx_nss[*nss - 1]++;
-		if (*mode < __MT_PHY_TYPE_HE_MAX)
+		if (*mode < __MT_PHY_TYPE_MAX)
 			stats->rx_mode[*mode]++;
 	}
 

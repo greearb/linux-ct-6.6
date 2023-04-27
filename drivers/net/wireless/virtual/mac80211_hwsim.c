@@ -5859,8 +5859,6 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 			rx_status.flag |= RX_FLAG_SKIP_MONITOR;
 		if (r->rx_flags & BIT(30))
 			rx_status.flag |= RX_FLAG_AMSDU_MORE;
-		if (r->rx_flags & BIT(31))
-			rx_status.flag |= RX_FLAG_RADIOTAP_VENDOR_DATA;
 		/* MIC_STRIPPED, ALLOW_SAME_PN, ICV_STRIPPED not supported by hwsim api currently */
 
 		rx_status.nss = r->vht_nss;

@@ -284,7 +284,7 @@ struct mt76_sta_stats {
 
 	/* This section requires group-5 in rxd to be enabled for 7915. */
 	u32 rx_nss[4]; /* rx-nss histogram */
-	u32 rx_mode[__MT_PHY_TYPE_HE_MAX]; /* rx mode histogram */
+	u32 rx_mode[__MT_PHY_TYPE_MAX]; /* rx mode histogram */
 	u32 rx_bw_20;
 	u32 rx_bw_40;
 	u32 rx_bw_80;

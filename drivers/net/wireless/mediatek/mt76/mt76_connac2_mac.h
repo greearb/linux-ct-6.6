@@ -39,6 +39,7 @@ enum {
 #define MT_TX_FREE_LATENCY		GENMASK(12, 0)
 /* when configured for txcount mode.  See MT_PLE_HOST_RPT0_TX_LATENCY. */
 #define MT_TX_FREE_TXCNT		GENMASK(12, 0)
+#define MT_TX_FREE_TXCNT_V3             GENMASK(27, 24)
 /* 0: success, others: dropped.  As defined for V1 descriptors. */
 #define MT_TX_FREE_STATUS		GENMASK(14, 13)
 #define MT_TX_FREE_STATUS_V3            GENMASK(29, 28) /* DW3 */
