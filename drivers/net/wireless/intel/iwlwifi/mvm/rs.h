@@ -3,7 +3,7 @@
  *
  * Copyright(c) 2015 Intel Mobile Communications GmbH
  * Copyright(c) 2017 Intel Deutschland GmbH
- * Copyright (C) 2003 - 2014, 2018 - 2022 Intel Corporation
+ * Copyright (C) 2003 - 2014, 2018 - 2023 Intel Corporation
  *****************************************************************************/
 
 #ifndef __rs_h__
@@ -122,13 +122,8 @@ enum {
 
 #define LINK_QUAL_AGG_FRAME_LIMIT_DEF	(63)
 #define LINK_QUAL_AGG_FRAME_LIMIT_MAX	(63)
-/*
- * FIXME - various places in firmware API still use u8,
- * e.g. LQ command and SCD config command.
- * This should be 256 instead.
- */
-#define LINK_QUAL_AGG_FRAME_LIMIT_GEN2_DEF	(255)
-#define LINK_QUAL_AGG_FRAME_LIMIT_GEN2_MAX	(255)
+#define LINK_QUAL_AGG_FRAME_LIMIT_GEN2_DEF	(64)
+#define LINK_QUAL_AGG_FRAME_LIMIT_GEN2_MAX	(64)
 #define LINK_QUAL_AGG_FRAME_LIMIT_MIN	(0)
 
 #define LQ_SIZE		2	/* 2 mode tables:  "Active" and "Search" */
@@ -203,18 +198,12 @@ struct rs_rate {
 /**
  * struct iwl_lq_sta_rs_fw - rate and related statistics for RS in FW
  * @last_rate_n_flags: last rate reported by FW
- * @max_agg_bufsize: the maximal size of the AGG buffer for this station
- * @sta_id: the id of the station
-#ifdef CONFIG_MAC80211_DEBUGFS
- * @dbg_fixed_rate: for debug, use fixed rate if not 0
- * @dbg_agg_frame_count_lim: for debug, max number of frames in A-MPDU
-#endif
+ * @pers.sta_id: the id of the station
  * @chains: bitmask of chains reported in %chain_signal
  * @chain_signal: per chain signal strength
  * @last_rssi: last rssi reported
  * @drv: pointer back to the driver data
  */
-
 struct iwl_lq_sta_rs_fw {
 	/* last tx rate_n_flags */
 	u32 last_rate_n_flags;
@@ -222,8 +211,15 @@ struct iwl_lq_sta_rs_fw {
 	/* persistent fields - initialized only once - keep last! */
 	struct lq_sta_pers_rs_fw {
 		u32 sta_id;
-#ifdef CONFIG_MAC80211_DEBUGFS
+#ifdef CPTCFG_MAC80211_DEBUGFS
+		/**
+		 * @dbg_fixed_rate: for debug, use fixed rate if not 0
+		 */
 		u32 dbg_fixed_rate;
+		/**
+		 * @dbg_agg_frame_count_lim: for debug, max number of
+		 *	frames in A-MPDU
+		 */
 		u16 dbg_agg_frame_count_lim;
 #endif
 		u8 chains;
@@ -233,7 +229,7 @@ struct iwl_lq_sta_rs_fw {
 	} pers;
 };
 
-/**
+/*
  * struct iwl_rate_scale_data -- tx success history for one rate
  */
 struct iwl_rate_scale_data {
@@ -275,7 +271,7 @@ struct rs_rate_stats {
 	u64 total;
 };
 
-/**
+/*
  * struct iwl_scale_tbl_info -- tx params and success history for all rates
  *
  * There are two of these in struct iwl_lq_sta,
@@ -296,7 +292,7 @@ enum {
 	RS_STATE_STAY_IN_COLUMN,
 };
 
-/**
+/*
  * struct iwl_lq_sta -- driver's rate scaling private structure
  *
  * Pointer to this gets passed back and forth between driver and mac80211.
@@ -362,7 +358,7 @@ struct iwl_lq_sta {
 
 	/* persistent fields - initialized only once - keep last! */
 	struct lq_sta_pers {
-#ifdef CONFIG_MAC80211_DEBUGFS
+#ifdef CPTCFG_MAC80211_DEBUGFS
 		u32 dbg_fixed_rate;
 		u8 dbg_fixed_txp_reduction;
 
@@ -430,15 +426,14 @@ struct iwl_mvm_sta;
 int iwl_mvm_tx_protection(struct iwl_mvm *mvm, struct iwl_mvm_sta *mvmsta,
 			  bool enable);
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 void iwl_mvm_reset_frame_stats(struct iwl_mvm *mvm);
 #endif
 
 struct iwl_mvm_link_sta;
 
 void iwl_mvm_rs_add_sta(struct iwl_mvm *mvm, struct iwl_mvm_sta *mvmsta);
-void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm,
-			     struct iwl_mvm_link_sta *link_sta);
+void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm, struct iwl_mvm_link_sta *link_sta);
 
 void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 			     struct ieee80211_vif *vif,
@@ -454,4 +449,13 @@ void iwl_mvm_tlc_update_notif(struct iwl_mvm *mvm,
 u16 rs_fw_get_max_amsdu_len(struct ieee80211_sta *sta,
 			    struct ieee80211_bss_conf *link_conf,
 			    struct ieee80211_link_sta *link_sta);
+
+int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data);
+
+static inline int iwl_rs_dhc_set_ampdu_size(struct ieee80211_sta *sta,
+					    struct ieee80211_link_sta *link_sta,
+					    u32 ampdu_size)
+{
+	return -EINVAL;
+}
 #endif /* __rs__ */

@@ -22,7 +22,7 @@ int iwl_mvm_send_cmd(struct iwl_mvm *mvm, struct iwl_host_cmd *cmd)
 {
 	int ret;
 
-#if defined(CONFIG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
+#if defined(CPTCFG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
 	if (WARN_ON(mvm->d3_test_active))
 		return -EIO;
 #endif
@@ -79,7 +79,7 @@ int iwl_mvm_send_cmd_status(struct iwl_mvm *mvm, struct iwl_host_cmd *cmd,
 
 	lockdep_assert_held(&mvm->mutex);
 
-#if defined(CONFIG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
+#if defined(CPTCFG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
 	if (WARN_ON(mvm->d3_test_active))
 		return -EIO;
 #endif
@@ -148,23 +148,6 @@ int iwl_mvm_legacy_hw_idx_to_mac80211_idx(u32 rate_n_flags,
 
 	/* CCK is not allowed in HB */
 	return is_LB ? rate : -1;
-}
-
-int iwl_mvm_set_valid_ant(struct iwl_mvm *mvm, u32 tx_ant, u32 rx_ant)
-{
-	if (mvm->nvm_data) {
-		mvm->nvm_data->valid_rx_ant = (rx_ant & ANT_ABC);
-		mvm->nvm_data->valid_tx_ant = (tx_ant & ANT_ABC);
-
-		iwl_reinit_capab(mvm->trans, mvm->nvm_data, mvm->nvm_data->valid_tx_ant,
-				 mvm->nvm_data->valid_rx_ant, mvm->fw);
-
-		return 0;
-	}
-	else {
-		pr_err("ERROR:  iwl-mvm-set-valid-ant:  mvm->nvm_data is NULL\n");
-		return -EINVAL;
-	}
 }
 
 int iwl_mvm_legacy_rate_to_mac80211_idx(u32 rate_n_flags,
@@ -266,6 +249,8 @@ u8 iwl_mvm_next_antenna(struct iwl_mvm *mvm, u8 valid, u8 last_idx)
  * This is the special case in which init is set and we call a callback in
  * this case to clear the state indicating that station creation is in
  * progress.
+ *
+ * Returns: an error code indicating success or failure
  */
 int iwl_mvm_send_lq_cmd(struct iwl_mvm *mvm, struct iwl_lq_cmd *lq)
 {
@@ -328,6 +313,12 @@ void iwl_mvm_update_smps(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		    IEEE80211_SMPS_DYNAMIC)
 			smps_mode = IEEE80211_SMPS_DYNAMIC;
 	}
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvmvif->link[link_id]->smps_requests[IWL_MVM_SMPS_REQ_DBG] !=
+	    IEEE80211_SMPS_AUTOMATIC)
+		smps_mode = mvmvif->link[link_id]->smps_requests[IWL_MVM_SMPS_REQ_DBG];
+#endif
 
 	/* SMPS is disabled in eSR */
 	if (mvmvif->esr_active)
@@ -461,6 +452,9 @@ bool iwl_mvm_rx_diversity_allowed(struct iwl_mvm *mvm,
 	};
 
 	lockdep_assert_held(&mvm->mutex);
+
+	if (iwlmvm_mod_params.power_scheme != IWL_POWER_SCHEME_CAM)
+		return false;
 
 	if (num_of_ant(iwl_mvm_get_valid_rx_ant(mvm)) == 1)
 		return false;
@@ -995,11 +989,12 @@ static unsigned long iwl_mvm_calc_tcm_stats(struct iwl_mvm *mvm,
 		if (!mvm->tcm.result.low_latency[mac] && handle_uapsd)
 			iwl_mvm_check_uapsd_agg_expected_tpt(mvm, uapsd_elapsed,
 							     mac);
+
 		/* clear old data */
-		if (handle_uapsd)
-			mdata->uapsd_nonagg_detect.rx_bytes = 0;
 		memset(&mdata->rx.airtime, 0, sizeof(mdata->rx.airtime));
 		memset(&mdata->tx.airtime, 0, sizeof(mdata->tx.airtime));
+		if (handle_uapsd)
+			mdata->uapsd_nonagg_detect.rx_bytes = 0;
 	}
 
 	load = iwl_mvm_tcm_load(mvm, total_airtime, elapsed);
@@ -1216,3 +1211,40 @@ bool iwl_mvm_vif_is_active(struct iwl_mvm_vif *mvmvif)
 
 	return false;
 }
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+int iwl_mvm_send_csi_cmd(struct iwl_mvm *mvm)
+{
+	/*
+	 * Note: v1 and v2 are compatible, except for the
+	 * reserved value and the new flag, both of which
+	 * are ignored by older FW, and the additional
+	 * fields which we need to strip.
+	 */
+	struct iwl_channel_estimation_cfg cfg = {
+		.flags = cpu_to_le32(mvm->csi_cfg.flags),
+		.timer = cpu_to_le32(mvm->csi_cfg.timer),
+		.count = cpu_to_le32(mvm->csi_cfg.count),
+		.frame_types = cpu_to_le64(mvm->csi_cfg.frame_types),
+		.rate_n_flags_val = cpu_to_le32(mvm->csi_cfg.rate_n_flags_val),
+		.rate_n_flags_mask =
+			cpu_to_le32(mvm->csi_cfg.rate_n_flags_mask),
+		.min_time_between_collection =
+			cpu_to_le32(mvm->csi_cfg.interval),
+		.num_filter_addrs = cpu_to_le32(mvm->csi_cfg.num_filter_addrs),
+	};
+	u32 id = WIDE_ID(DATA_PATH_GROUP, CHEST_COLLECTOR_FILTER_CONFIG_CMD);
+	unsigned int size = sizeof(cfg);
+	int i;
+
+	for (i = 0; i < mvm->csi_cfg.num_filter_addrs; i++)
+		ether_addr_copy(cfg.filter_addrs[i].addr,
+				mvm->csi_cfg.filter_addrs[i].addr);
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa,
+			 IWL_UCODE_TLV_CAPA_CSI_REPORTING_V2))
+		size = sizeof(struct iwl_channel_estimation_cfg_v1);
+
+	return iwl_mvm_send_cmd_pdu(mvm, id, 0, size, &cfg);
+}
+#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */

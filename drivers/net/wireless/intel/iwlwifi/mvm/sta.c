@@ -60,7 +60,8 @@ u32 iwl_mvm_get_sta_ampdu_dens(struct ieee80211_link_sta *link_sta,
 	if (WARN_ON(!link_sta))
 		return 0;
 
-	/* Note that we always use only legacy & highest supported PPDUs, so
+	/*
+	 * Note that we always use only legacy & highest supported PPDUs, so
 	 * of Draft P802.11be D.30 Table 10-12a--Fields used for calculating
 	 * the maximum A-MPDU size of various PPDU types in different bands,
 	 * we only need to worry about the highest supported PPDU type here.
@@ -92,9 +93,8 @@ u32 iwl_mvm_get_sta_ampdu_dens(struct ieee80211_link_sta *link_sta,
 	 * Capabilities element
 	 */
 	if (link_sta->he_cap.has_he)
-		agg_size +=
-			u8_get_bits(link_sta->he_cap.he_cap_elem.mac_cap_info[3],
-				    IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_MASK);
+		agg_size += u8_get_bits(link_sta->he_cap.he_cap_elem.mac_cap_info[3],
+					IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_MASK);
 
 	if (link_sta->eht_cap.has_eht)
 		agg_size += u8_get_bits(link_sta->eht_cap.eht_cap_elem.mac_cap_info[1],
@@ -827,7 +827,7 @@ static int iwl_mvm_get_queue_size(struct ieee80211_sta *sta)
 		if (!link)
 			continue;
 
-		/* support for 1k ba size */
+		/* support for 512 ba size */
 		if (link->eht_cap.has_eht &&
 		    max_size < IWL_DEFAULT_QUEUE_SIZE_EHT)
 			max_size = IWL_DEFAULT_QUEUE_SIZE_EHT;
@@ -865,11 +865,11 @@ int iwl_mvm_tvqm_enable_txq(struct iwl_mvm *mvm,
 
 	if (sta) {
 		struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
+		struct ieee80211_link_sta *link_sta;
 		unsigned int link_id;
 
-		for (link_id = 0;
-		     link_id < ARRAY_SIZE(mvmsta->link);
-		     link_id++) {
+		rcu_read_lock();
+		for_each_sta_active_link(mvmsta->vif, sta, link_sta, link_id) {
 			struct iwl_mvm_link_sta *link =
 				rcu_dereference_protected(mvmsta->link[link_id],
 							  lockdep_is_held(&mvm->mutex));
@@ -879,6 +879,7 @@ int iwl_mvm_tvqm_enable_txq(struct iwl_mvm *mvm,
 
 			sta_mask |= BIT(link->sta_id);
 		}
+		rcu_read_unlock();
 	} else {
 		sta_mask |= BIT(sta_id);
 	}
@@ -1755,7 +1756,6 @@ int iwl_mvm_sta_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			mvm_sta->deflink.lq_sta.rs_drv.pers.max_agg_bufsize =
 				LINK_QUAL_AGG_FRAME_LIMIT_GEN2_DEF;
 	}
-
 	mvm_sta->tt_tx_protection = false;
 	mvm_sta->sta_type = sta_type;
 
@@ -1844,11 +1844,6 @@ int iwl_mvm_add_sta(struct iwl_mvm *mvm,
 
 	spin_lock_init(&mvm_sta->lock);
 
-	ewma_signal_init(&mvm_sta->rx_avg_chain_signal[0]);
-	ewma_signal_init(&mvm_sta->rx_avg_chain_signal[1]);
-	ewma_signal_init(&mvm_sta->rx_avg_signal);
-	ewma_signal_init(&mvm_sta->rx_avg_beacon_signal);
-
 	/* if this is a HW restart re-alloc existing queues */
 	if (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
 		struct iwl_mvm_int_sta tmp_sta = {
@@ -1856,7 +1851,8 @@ int iwl_mvm_add_sta(struct iwl_mvm *mvm,
 			.type = mvm_sta->sta_type,
 		};
 
-		/* First add an empty station since allocating
+		/*
+		 * First add an empty station since allocating
 		 * a queue requires a valid station
 		 */
 		ret = iwl_mvm_add_int_sta_common(mvm, &tmp_sta, sta->addr,
@@ -2029,17 +2025,15 @@ bool iwl_mvm_sta_del(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		     struct ieee80211_link_sta *link_sta, int *ret)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	struct iwl_mvm_vif_link_info *mvm_link =
-		mvmvif->link[link_sta->link_id];
+	struct iwl_mvm_vif_link_info *mvm_link = mvmvif->link[link_sta->link_id];
 	struct iwl_mvm_sta *mvm_sta = iwl_mvm_sta_from_mac80211(sta);
 	struct iwl_mvm_link_sta *mvm_link_sta;
 	u8 sta_id;
 
 	lockdep_assert_held(&mvm->mutex);
 
-	mvm_link_sta =
-		rcu_dereference_protected(mvm_sta->link[link_sta->link_id],
-					  lockdep_is_held(&mvm->mutex));
+	mvm_link_sta = rcu_dereference_protected(mvm_sta->link[link_sta->link_id],
+						 lockdep_is_held(&mvm->mutex));
 	sta_id = mvm_link_sta->sta_id;
 
 	/* If there is a TXQ still marked as reserved - free it */
@@ -2998,6 +2992,7 @@ int iwl_mvm_sta_rx_agg(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
 		/* synchronize all rx queues so we can safely delete */
 		iwl_mvm_free_reorder(mvm, baid_data);
 		timer_shutdown_sync(&baid_data->session_timer);
+
 		RCU_INIT_POINTER(mvm->baid_map[baid], NULL);
 		kfree_rcu(baid_data, rcu_head);
 		IWL_DEBUG_HT(mvm, "BAID %d is free\n", baid);
@@ -3312,8 +3307,7 @@ out:
 	 * aggregation sessions and our default value.
 	 */
 	mvmsta->deflink.lq_sta.rs_drv.pers.max_agg_bufsize =
-		min(mvmsta->deflink.lq_sta.rs_drv.pers.max_agg_bufsize,
-		    buf_size);
+		min(mvmsta->deflink.lq_sta.rs_drv.pers.max_agg_bufsize, buf_size);
 	mvmsta->deflink.lq_sta.rs_drv.lq.agg_frame_cnt_limit =
 		mvmsta->deflink.lq_sta.rs_drv.pers.max_agg_bufsize;
 
@@ -4350,7 +4344,8 @@ int iwl_mvm_add_pasn_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	keyconf->flags = IEEE80211_KEY_FLAG_PAIRWISE;
 
 	if (mld) {
-		/* The MFP flag is set according to the station mfp field. Since
+		/*
+		 * The MFP flag is set according to the station mfp field. Since
 		 * we don't have a station, set it manually.
 		 */
 		u32 key_flags =

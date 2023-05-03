@@ -28,7 +28,7 @@ void iwl_mvm_rx_rx_phy_cmd(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)
 	memcpy(&mvm->last_phy_info, pkt->data, sizeof(mvm->last_phy_info));
 	mvm->ampdu_ref++;
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (mvm->last_phy_info.phy_flags & cpu_to_le16(RX_RES_PHY_FLAGS_AGG)) {
 		spin_lock(&mvm->drv_stats_lock);
 		mvm->drv_rx_stats.ampdu_count++;
@@ -114,9 +114,7 @@ static void iwl_mvm_get_signal_strength(struct iwl_mvm *mvm,
 	energy_b = (val & IWL_RX_INFO_ENERGY_ANT_B_MSK) >>
 						IWL_RX_INFO_ENERGY_ANT_B_POS;
 	energy_b = energy_b ? -energy_b : S8_MIN;
-
-	/* use DB summing to get better RSSI reporting */
-	max_energy = iwl_mvm_sum_sigs_2(energy_a, energy_b);
+	max_energy = max(energy_a, energy_b);
 
 	IWL_DEBUG_STATS(mvm, "energy In A %d B %d  , and max %d\n",
 			energy_a, energy_b, max_energy);
@@ -206,9 +204,9 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 {
 	struct iwl_mvm_sta *mvmsta;
 	struct iwl_mvm_tcm_mac *mdata;
+	struct iwl_mvm_vif *mvmvif;
 	int mac;
 	int ac = IEEE80211_AC_BE; /* treat non-QoS as BE */
-	struct iwl_mvm_vif *mvmvif;
 	/* expected throughput in 100Kbps, single stream, 20 MHz */
 	static const u8 thresh_tpt[] = {
 		9, 18, 30, 42, 60, 78, 90, 96, 120, 135,
@@ -235,11 +233,10 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 		mdata->rx.last_ampdu_ref = mvm->ampdu_ref;
 		mdata->rx.airtime += le16_to_cpu(phy_info->frame_time);
 	}
+	mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
 
 	if (!(rate_n_flags & (RATE_MCS_HT_MSK_V1 | RATE_MCS_VHT_MSK_V1)))
 		return;
-
-	mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
 
 	if (mdata->opened_rx_ba_sessions ||
 	    mdata->uapsd_nonagg_detect.detected ||
@@ -455,6 +452,13 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		    ieee80211_is_data(hdr->frame_control))
 			iwl_mvm_rx_handle_tcm(mvm, sta, hdr, len, phy_info,
 					      rate_n_flags);
+#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+		/*
+		 * these packets are from the AP or the existing TDLS peer.
+		 * In both cases an existing station.
+		 */
+		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, 0);
+#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		if (ieee80211_is_data(hdr->frame_control))
 			iwl_mvm_rx_csum(sta, skb, rx_pkt_status);
@@ -525,7 +529,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		rx_status->rate_idx = rate;
 	}
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	iwl_mvm_update_frame_stats(mvm, rate_n_flags,
 				   rx_status->flag & RX_FLAG_AMPDU_DETAILS);
 #endif

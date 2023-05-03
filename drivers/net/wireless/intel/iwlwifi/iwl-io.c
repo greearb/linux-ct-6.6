@@ -275,7 +275,7 @@ static int iwl_dump_rfh(struct iwl_trans *trans, char **buf)
 		{ RFH_Q0_URBD_STTS_WPTR_LSB, true },
 	};
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (buf) {
 		int pos = 0;
 		/*
@@ -371,7 +371,7 @@ int iwl_dump_fh(struct iwl_trans *trans, char **buf)
 	if (trans->trans_cfg->mq_rx_supported)
 		return iwl_dump_rfh(trans, buf);
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (buf) {
 		int pos = 0;
 		size_t bufsz = ARRAY_SIZE(fh_tbl) * 48 + 40;

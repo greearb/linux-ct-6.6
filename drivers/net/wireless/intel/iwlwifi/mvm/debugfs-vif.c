@@ -200,6 +200,9 @@ static ssize_t iwl_dbgfs_mac_params_read(struct file *file,
 	case NL80211_IFTYPE_P2P_DEVICE:
 		pos += scnprintf(buf+pos, bufsz-pos, "type: p2p dev\n");
 		break;
+	case NL80211_IFTYPE_NAN:
+		pos += scnprintf(buf+pos, bufsz-pos, "type: NAN\n");
+		break;
 	default:
 		break;
 	}
@@ -578,34 +581,46 @@ static ssize_t iwl_dbgfs_rx_phyinfo_write(struct ieee80211_vif *vif, char *buf,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	struct ieee80211_chanctx_conf *chanctx_conf;
-	struct iwl_mvm_phy_ctxt *phy_ctxt;
+	struct ieee80211_bss_conf *link_conf;
 	u16 value;
-	int ret;
+	int link_id, ret = -EINVAL;
 
 	ret = kstrtou16(buf, 0, &value);
 	if (ret)
 		return ret;
 
 	mutex_lock(&mvm->mutex);
-	rcu_read_lock();
-
-	chanctx_conf = rcu_dereference(vif->bss_conf.chanctx_conf);
-	/* make sure the channel context is assigned */
-	if (!chanctx_conf) {
-		rcu_read_unlock();
-		mutex_unlock(&mvm->mutex);
-		return -EINVAL;
-	}
-
-	phy_ctxt = &mvm->phy_ctxts[*(u16 *)chanctx_conf->drv_priv];
-	rcu_read_unlock();
 
 	mvm->dbgfs_rx_phyinfo = value;
 
-	ret = iwl_mvm_phy_ctxt_changed(mvm, phy_ctxt, &chanctx_conf->min_def,
-				       chanctx_conf->rx_chains_static,
-				       chanctx_conf->rx_chains_dynamic);
+	for_each_vif_active_link(vif, link_conf, link_id) {
+		struct ieee80211_chanctx_conf *chanctx_conf;
+		struct cfg80211_chan_def min_def;
+		struct iwl_mvm_phy_ctxt *phy_ctxt;
+		u8 chains_static, chains_dynamic;
+
+		rcu_read_lock();
+		chanctx_conf = rcu_dereference(link_conf->chanctx_conf);
+		if (!chanctx_conf) {
+			rcu_read_unlock();
+			continue;
+		}
+		/* A command can't be sent with RCU lock held, so copy
+		 * everything here and use it after unlocking
+		 */
+		min_def = chanctx_conf->min_def;
+		chains_static = chanctx_conf->rx_chains_static;
+		chains_dynamic = chanctx_conf->rx_chains_dynamic;
+		rcu_read_unlock();
+
+		phy_ctxt = mvmvif->link[link_id]->phy_ctxt;
+		if (!phy_ctxt)
+			continue;
+
+		ret = iwl_mvm_phy_ctxt_changed(mvm, phy_ctxt, &min_def,
+					       chains_static, chains_dynamic);
+	}
+
 	mutex_unlock(&mvm->mutex);
 
 	return ret ?: count;
@@ -679,6 +694,180 @@ static ssize_t iwl_dbgfs_quota_min_read(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }
 
+static ssize_t iwl_dbgfs_twt_setup_write(struct ieee80211_vif *vif, char *buf,
+					 size_t count, loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	struct iwl_dhc_twt_operation *dhc_twt_cmd;
+	struct iwl_dhc_cmd *cmd;
+
+	u32 twt_operation;
+	u64 target_wake_time;
+	u32 interval_exp;
+	u32 interval_mantissa;
+	u32 min_wake_duration;
+	u8 trigger;
+	u8 flow_type;
+	u8 flow_id;
+	u8 protection;
+	u8 twt_request = 1;
+	u8 broadcast = 0;
+	u8 tenth_param;
+	int ret;
+
+	ret = sscanf(buf, "%u %llu %u %u %u %hhu %hhu %hhu %hhu %hhu",
+		     &twt_operation, &target_wake_time, &interval_exp,
+		     &interval_mantissa, &min_wake_duration, &trigger,
+		     &flow_type, &flow_id, &protection, &tenth_param);
+
+	// the new twt_request parameter is optional for station
+	if ((ret != 9 && ret != 10) ||
+	    (vif->type != NL80211_IFTYPE_STATION && tenth_param == 1))
+		return -EINVAL;
+
+	/*
+	 * The 10th parameter:
+	 * In STA mode - the TWT type (broadcast or individual)
+	 * In AP mode - the role (0 responder, 1 requester, 2 unsolicited)
+	 */
+	if (ret == 10) {
+		if (vif->type == NL80211_IFTYPE_STATION)
+			broadcast = tenth_param;
+		else
+			twt_request = tenth_param;
+	}
+
+	cmd = kzalloc(sizeof(*cmd) + sizeof(*dhc_twt_cmd), GFP_KERNEL);
+	if (!cmd)
+		return -ENOMEM;
+
+	dhc_twt_cmd = (void *)cmd->data;
+	dhc_twt_cmd->mac_id = cpu_to_le32(mvmvif->id);
+	dhc_twt_cmd->twt_operation = cpu_to_le32(twt_operation);
+	dhc_twt_cmd->target_wake_time = cpu_to_le64(target_wake_time);
+	dhc_twt_cmd->interval_exp = cpu_to_le32(interval_exp);
+	dhc_twt_cmd->interval_mantissa = cpu_to_le32(interval_mantissa);
+	dhc_twt_cmd->min_wake_duration = cpu_to_le32(min_wake_duration);
+	dhc_twt_cmd->trigger = trigger;
+	dhc_twt_cmd->flow_type = flow_type;
+	dhc_twt_cmd->flow_id = flow_id;
+	dhc_twt_cmd->protection = protection;
+	dhc_twt_cmd->twt_request = twt_request;
+	dhc_twt_cmd->negotiation_type = broadcast ? 3 : 0;
+
+	cmd->length = cpu_to_le32(sizeof(*dhc_twt_cmd) >> 2);
+	cmd->index_and_mask =
+		cpu_to_le32(DHC_TABLE_INTEGRATION | DHC_TARGET_UMAC |
+			    DHC_INT_UMAC_TWT_OPERATION);
+
+	mutex_lock(&mvm->mutex);
+	ret = iwl_mvm_send_cmd_pdu(mvm,
+				   WIDE_ID(IWL_ALWAYS_LONG_GROUP, DEBUG_HOST_COMMAND),
+				   0, sizeof(*cmd) + sizeof(*dhc_twt_cmd),
+				   cmd);
+	mutex_unlock(&mvm->mutex);
+	kfree(cmd);
+
+	return ret ?: count;
+}
+
+static ssize_t iwl_dbgfs_eht_puncturing_read(struct file *file,
+					     char __user *user_buf,
+					     size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	char buf[8];
+	int len;
+
+	len = scnprintf(buf, sizeof(buf), "0x%04x\n",
+			vif->bss_conf.eht_puncturing);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static ssize_t iwl_dbgfs_eht_puncturing_write(struct ieee80211_vif *vif, char *buf,
+					      size_t count, loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	struct ieee80211_sta *sta;
+	struct iwl_mvm_sta *mvmsta;
+	u16 puncturing;
+	int ret, i;
+
+	if (!iwl_mvm_firmware_running(mvm))
+		return -EIO;
+
+	if (vif->type != NL80211_IFTYPE_AP)
+		return -EINVAL;
+
+	ret = kstrtou16(buf, 0, &puncturing);
+	if (ret)
+		return ret;
+
+	/*
+	 * MVM is not supposed to modify the BSS info,
+	 * but softAP doesn't use this field anyway.
+	 */
+	vif->bss_conf.eht_puncturing = puncturing;
+
+	mutex_lock(&mvm->mutex);
+
+	for (i = 0; i < mvm->fw->ucode_capa.num_stations; i++) {
+		sta = rcu_dereference_protected(mvm->fw_id_to_mac_id[i],
+						lockdep_is_held(&mvm->mutex));
+
+		if (IS_ERR_OR_NULL(sta))
+			continue;
+
+		mvmsta = iwl_mvm_sta_from_mac80211(sta);
+		if (mvmsta->vif != vif)
+			continue;
+
+		iwl_mvm_cfg_he_sta(mvm, vif, mvmsta->deflink.sta_id);
+	}
+
+	mutex_unlock(&mvm->mutex);
+	return count;
+}
+
+static ssize_t iwl_dbgfs_max_tx_op_write(struct ieee80211_vif *vif, char *buf,
+					 size_t count, loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	u16 value;
+	int ret;
+
+	ret = kstrtou16(buf, 0, &value);
+	if (ret)
+		return ret;
+
+	mutex_lock(&mvm->mutex);
+	mvmvif->max_tx_op = value;
+	mutex_unlock(&mvm->mutex);
+
+	return count;
+}
+
+static ssize_t iwl_dbgfs_max_tx_op_read(struct file *file,
+					char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	char buf[10];
+	int len;
+
+	mutex_lock(&mvm->mutex);
+	len = scnprintf(buf, sizeof(buf), "%hu\n", mvmvif->max_tx_op);
+	mutex_unlock(&mvm->mutex);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
 #define MVM_DEBUGFS_WRITE_FILE_OPS(name, bufsz) \
 	_MVM_DEBUGFS_WRITE_FILE_OPS(name, bufsz, struct ieee80211_vif)
 #define MVM_DEBUGFS_READ_WRITE_FILE_OPS(name, bufsz) \
@@ -698,6 +887,9 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(uapsd_misbehaving, 20);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(rx_phyinfo, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(quota_min, 32);
 MVM_DEBUGFS_READ_FILE_OPS(os_device_timediff);
+MVM_DEBUGFS_WRITE_FILE_OPS(twt_setup, 256);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(eht_puncturing, 16);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(max_tx_op, 10);
 
 
 void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
@@ -733,6 +925,9 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	MVM_DEBUGFS_ADD_FILE_VIF(rx_phyinfo, mvmvif->dbgfs_dir, 0600);
 	MVM_DEBUGFS_ADD_FILE_VIF(quota_min, mvmvif->dbgfs_dir, 0600);
 	MVM_DEBUGFS_ADD_FILE_VIF(os_device_timediff, mvmvif->dbgfs_dir, 0400);
+	MVM_DEBUGFS_ADD_FILE_VIF(twt_setup, mvmvif->dbgfs_dir, 0200);
+	MVM_DEBUGFS_ADD_FILE_VIF(eht_puncturing, mvmvif->dbgfs_dir, 0600);
+	MVM_DEBUGFS_ADD_FILE_VIF(max_tx_op, mvmvif->dbgfs_dir, 0600);
 
 	if (vif->type == NL80211_IFTYPE_STATION && !vif->p2p &&
 	    mvmvif == mvm->bf_allowed_vif)

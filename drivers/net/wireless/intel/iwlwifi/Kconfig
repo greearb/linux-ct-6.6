@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 config IWLWIFI
 	tristate "Intel Wireless WiFi Next Gen AGN - Wireless-N/Advanced-N/Ultimate-N (iwlwifi) "
+	depends on m
 	depends on PCI && HAS_IOMEM && CFG80211
 	depends on IWLMEI || !IWLMEI
-	select FW_LOADER
+	depends on FW_LOADER
 	help
 	  Select to build the driver supporting the:
 
@@ -50,21 +51,14 @@ config IWLWIFI_LEDS
 	bool
 	depends on LEDS_CLASS=y || LEDS_CLASS=MAC80211
 	depends on IWLMVM || IWLDVM
-	select LEDS_TRIGGERS
+	depends on LEDS_TRIGGERS
 	select MAC80211_LEDS
 	default y
 
-config IWLDVM
-	tristate "Intel Wireless WiFi DVM Firmware support"
-	depends on MAC80211
-	help
-	  This is the driver that supports the DVM firmware. The list
-	  of the devices that use this firmware is available here:
-	  https://wireless.wiki.kernel.org/en/users/drivers/iwlwifi#firmware
-
 config IWLMVM
 	tristate "Intel Wireless WiFi MVM Firmware support"
-	select WANT_DEV_COREDUMP
+	depends on m
+	select BPAUTO_WANT_DEV_COREDUMP
 	depends on MAC80211
 	depends on PTP_1588_CLOCK_OPTIONAL
 	help
@@ -77,6 +71,7 @@ config IWLWIFI_OPMODE_MODULAR
 	bool
 	default y if IWLDVM=m
 	default y if IWLMVM=m
+	default y if IWLXVT=m
 
 comment "WARNING: iwlwifi is useless without IWLDVM or IWLMVM"
 	depends on IWLDVM=n && IWLMVM=n
@@ -138,10 +133,11 @@ endif
 
 config IWLMEI
 	tristate "Intel Management Engine communication over WLAN"
+	depends on m
 	depends on INTEL_MEI
 	depends on PM
 	depends on CFG80211
-	depends on BROKEN
+	depends on WLAN_VENDOR_INTEL_MEI || !KERNEL_5_17
 	help
 	  Enables the iwlmei kernel module.
 
@@ -162,3 +158,5 @@ config IWLMEI
 	  <https://software.intel.com/en-us/manageability/>
 
 	  If unsure, say N.
+
+source "drivers/net/wireless/intel/iwlwifi/Kconfig.noupstream"

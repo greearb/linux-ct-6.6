@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2012-2014, 2018-2019, 2021 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2019, 2021-2023 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -220,6 +220,8 @@ iwl_parse_nvm_sections(struct iwl_mvm *mvm)
 	struct iwl_nvm_section *sections = mvm->nvm_sections;
 	const __be16 *hw;
 	const __le16 *sw, *calib, *regulatory, *mac_override, *phy_sku;
+	u8 tx_ant = mvm->fw->valid_tx_ant;
+	u8 rx_ant = mvm->fw->valid_rx_ant;
 	int regulatory_type;
 
 	/* Checking for required sections */
@@ -270,9 +272,15 @@ iwl_parse_nvm_sections(struct iwl_mvm *mvm)
 		(const __le16 *)sections[NVM_SECTION_TYPE_REGULATORY_SDP].data :
 		(const __le16 *)sections[NVM_SECTION_TYPE_REGULATORY].data;
 
+	if (mvm->set_tx_ant)
+		tx_ant &= mvm->set_tx_ant;
+
+	if (mvm->set_rx_ant)
+		rx_ant &= mvm->set_rx_ant;
+
 	return iwl_parse_nvm_data(mvm->trans, mvm->cfg, mvm->fw, hw, sw, calib,
 				  regulatory, mac_override, phy_sku,
-				  mvm->fw->valid_tx_ant, mvm->fw->valid_rx_ant);
+				  tx_ant, rx_ant);
 }
 
 /* Loads the NVM data stored in mvm->nvm_sections into the NIC */
@@ -336,7 +344,7 @@ int iwl_nvm_init(struct iwl_mvm *mvm)
 		mvm->nvm_sections[section].data = temp;
 		mvm->nvm_sections[section].length = ret;
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 		switch (section) {
 		case NVM_SECTION_TYPE_SW:
 			mvm->nvm_sw_blob.data = temp;
@@ -429,6 +437,13 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 		return ERR_PTR(-EOPNOTSUPP);
 
 	cmd.len[0] = sizeof(struct iwl_mcc_update_cmd);
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (mvm->trans->trans_cfg->device_family >
+		IWL_DEVICE_FAMILY_9000 &&
+	    src_id == MCC_SOURCE_MCC_API)
+		mcc_update_cmd.key = cpu_to_le32(0xDEADBEE1);
+#endif
 
 	IWL_DEBUG_LAR(mvm, "send MCC update to FW with '%c%c' src = %d\n",
 		      alpha2[0], alpha2[1], src_id);
@@ -591,6 +606,7 @@ int iwl_mvm_init_mcc(struct iwl_mvm *mvm)
 	}
 
 	retval = regulatory_set_wiphy_regd_sync(mvm->hw->wiphy, regd);
+
 	kfree(regd);
 	return retval;
 }

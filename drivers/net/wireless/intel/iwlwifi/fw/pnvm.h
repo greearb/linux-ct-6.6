@@ -8,7 +8,9 @@
 #include "iwl-drv.h"
 #include "fw/notif-wait.h"
 
-#define MVM_UCODE_PNVM_TIMEOUT	(HZ / 4)
+#define MVM_UCODE_PNVM_TIMEOUT	(HZ / 4 * CPTCFG_IWL_TIMEOUT_FACTOR)
+
+#define MAX_PNVM_NAME  64
 
 #define MAX_PNVM_NAME  64
 

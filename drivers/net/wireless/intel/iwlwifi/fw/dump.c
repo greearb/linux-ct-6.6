@@ -182,8 +182,7 @@ static void iwl_fwrt_dump_lmac_error_log(struct iwl_fw_runtime *fwrt, u8 lmac_nu
 			base = fwrt->fw->inst_errlog_ptr;
 	}
 
-	if ((fwrt->trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_BZ && !base) ||
-	    (fwrt->trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_BZ && base < 0x400000)) {
+	if (!base) {
 		IWL_ERR(fwrt,
 			"Not valid error log pointer 0x%08X for %s uCode\n",
 			base,
@@ -514,12 +513,10 @@ void iwl_fwrt_dump_error_logs(struct iwl_fw_runtime *fwrt)
 
 		if (!iwl_trans_grab_nic_access(fwrt->trans))
 			return;
-		for (count = 0; count < fwrt->trans->dbg.num_pc;
-		     count++, pc_data++)
+		for (count = 0; count < fwrt->trans->dbg.num_pc; count++, pc_data++)
 			IWL_ERR(fwrt, "%s: 0x%x\n",
 				pc_data->pc_name,
-				iwl_read_prph_no_grab(fwrt->trans,
-						      pc_data->pc_address));
+				iwl_read_prph_no_grab(fwrt->trans, pc_data->pc_address));
 		iwl_trans_release_nic_access(fwrt->trans);
 	}
 

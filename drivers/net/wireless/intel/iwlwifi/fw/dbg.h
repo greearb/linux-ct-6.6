@@ -175,7 +175,7 @@ void iwl_fw_dbg_stop_restart_recording(struct iwl_fw_runtime *fwrt,
 				       struct iwl_fw_dbg_params *params,
 				       bool stop);
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 static inline void iwl_fw_set_dbg_rec_on(struct iwl_fw_runtime *fwrt)
 {
 	if (fwrt->cur_fw_img == IWL_UCODE_REGULAR &&
@@ -227,15 +227,14 @@ static inline void iwl_fw_flush_dumps(struct iwl_fw_runtime *fwrt)
 		flush_delayed_work(&fwrt->dump.wks[i].wk);
 }
 
-int iwl_fw_send_timestamp_marker_cmd(struct iwl_fw_runtime *fwrt);
-
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 static inline void iwl_fw_cancel_timestamp(struct iwl_fw_runtime *fwrt)
 {
 	fwrt->timestamp.delay = 0;
 	cancel_delayed_work_sync(&fwrt->timestamp.wk);
 }
 
+int iwl_fw_send_timestamp_marker_cmd(struct iwl_fw_runtime *fwrt);
 void iwl_fw_trigger_timestamp(struct iwl_fw_runtime *fwrt, u32 delay);
 
 static inline void iwl_fw_suspend_timestamp(struct iwl_fw_runtime *fwrt)
@@ -263,9 +262,7 @@ static inline void iwl_fw_suspend_timestamp(struct iwl_fw_runtime *fwrt) {}
 
 static inline void iwl_fw_resume_timestamp(struct iwl_fw_runtime *fwrt) {}
 
-#endif /* CONFIG_IWLWIFI_DEBUGFS */
-
-void iwl_fw_dbg_stop_sync(struct iwl_fw_runtime *fwrt);
+#endif /* CPTCFG_IWLWIFI_DEBUGFS */
 
 static inline void iwl_fw_lmac1_set_alive_err_table(struct iwl_trans *trans,
 						    u32 lmac_error_event_table)
@@ -287,6 +284,8 @@ static inline void iwl_fw_umac_set_alive_err_table(struct iwl_trans *trans,
 		trans->dbg.umac_error_event_table = umac_error_event_table;
 }
 
+void iwl_fw_dbg_stop_sync(struct iwl_fw_runtime *fwrt);
+
 static inline void iwl_fw_error_collect(struct iwl_fw_runtime *fwrt, bool sync)
 {
 	enum iwl_fw_ini_time_point tp_id;
@@ -305,8 +304,6 @@ static inline void iwl_fw_error_collect(struct iwl_fw_runtime *fwrt, bool sync)
 
 	_iwl_dbg_tlv_time_point(fwrt, tp_id, NULL, sync);
 }
-
-void iwl_fw_error_print_fseq_regs(struct iwl_fw_runtime *fwrt);
 
 static inline void iwl_fwrt_update_fw_versions(struct iwl_fw_runtime *fwrt,
 					       struct iwl_lmac_alive *lmac,
@@ -330,8 +327,19 @@ void iwl_send_dbg_dump_complete_cmd(struct iwl_fw_runtime *fwrt,
 				    u32 timepoint,
 				    u32 timepoint_data);
 
+void iwl_fw_disable_dbg_asserts(struct iwl_fw_runtime *fwrt);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#define IWL_FW_CHECK_FAILED(_obj, _fmt, ...)				\
+	do {								\
+		IWL_ERR(_obj, _fmt, __VA_ARGS__);			\
+		if ((_obj)->trans->dbg_cfg.FW_MISBEHAVE_NMI)		\
+			iwl_force_nmi((_obj)->trans);			\
+	} while (0)
+#else
 #define IWL_FW_CHECK_FAILED(_obj, _fmt, ...)				\
 	IWL_ERR_LIMIT(_obj, _fmt, __VA_ARGS__)
+#endif
 
 #define IWL_FW_CHECK(_obj, _cond, _fmt, ...)				\
 	({								\

@@ -28,6 +28,9 @@
 #include "internal.h"
 #include "iwl-fh.h"
 #include "iwl-context-info-gen3.h"
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#include "iwl-dnt-cfg.h"
+#endif
 
 /* extended range in FW SRAM */
 #define IWL_FW_MEM_EXTENDED_START	0x40000
@@ -134,11 +137,13 @@ static int iwl_trans_pcie_sw_reset(struct iwl_trans *trans,
 	if (trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_SW_RESET);
-		usleep_range(10000, 20000);
+		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
+			     20000 * CPTCFG_IWL_DELAY_FACTOR);
 	} else {
 		iwl_set_bit(trans, CSR_RESET,
 			    CSR_RESET_REG_FLAG_SW_RESET);
-		usleep_range(5000, 6000);
+		usleep_range(5000 * CPTCFG_IWL_DELAY_FACTOR,
+			     6000 * CPTCFG_IWL_DELAY_FACTOR);
 	}
 
 	if (retake_ownership)
@@ -206,8 +211,6 @@ static void iwl_pcie_alloc_fw_monitor_block(struct iwl_trans *trans,
 
 void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power)
 {
-	pr_err("iwl_pcie_alloc_fw_monitor, monitor size max_power requested: %d\n",
-	       max_power);
 	if (!max_power) {
 		/* default max_power is maximum */
 		max_power = 26;
@@ -219,13 +222,6 @@ void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power)
 		 "External buffer size for monitor is too big %d, check the FW TLV\n",
 		 max_power))
 		return;
-
-	/* Try to use less memory, there are other things in the system as well! */
-	if (max_power > 19) {
-		pr_err("iwl_pcie_alloc_fw_monitor, decreasing max-power from %d to 19 to save memory.\n",
-		       max_power);
-		max_power = 19;
-	}
 
 	iwl_pcie_alloc_fw_monitor_block(trans, max_power);
 }
@@ -486,7 +482,8 @@ void iwl_pcie_apm_stop_master(struct iwl_trans *trans)
 				   CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS,
 				   CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS,
 				   100);
-		usleep_range(10000, 20000);
+		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
+			     20000 * CPTCFG_IWL_DELAY_FACTOR);
 	} else {
 		iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_STOP_MASTER);
 
@@ -777,6 +774,39 @@ static int iwl_pcie_load_section(struct iwl_trans *trans, u8 section_num,
 	return ret;
 }
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static void iwl_pcie_override_secure_boot_cfg(struct iwl_trans *trans)
+{
+	u32 val;
+
+	if (!trans->dbg_cfg.secure_boot_cfg)
+		return;
+
+	/* Verify AUX address space is not locked */
+	val = iwl_read_prph(trans, PREG_AUX_BUS_WPROT_0);
+	if (val & BIT((SB_CFG_OVERRIDE_ADDR - SB_CFG_BASE_OVERRIDE) >> 10)) {
+		IWL_ERR(trans,
+			"AUX address space is locked for override, (AUX val=0x%x)\n",
+			val);
+		return;
+	}
+
+	/* Modify secure boot cfg flags */
+	iwl_write_prph(trans, SB_MODIFY_CFG_FLAG,
+		       trans->dbg_cfg.secure_boot_cfg);
+
+	/* take ownership on the AUX IF */
+	iwl_set_bits_prph(trans, WFPM_CTRL_REG,
+			  WFPM_AUX_CTL_AUX_IF_MAC_OWNER_MSK);
+
+	/* indicate secure boot cfg override */
+	iwl_set_bits_prph(trans, SB_CFG_OVERRIDE_ADDR,
+			  SB_CFG_OVERRIDE_ENABLE);
+
+	return;
+}
+#endif
+
 static int iwl_pcie_load_cpu_sections_8000(struct iwl_trans *trans,
 					   const struct fw_img *image,
 					   int cpu,
@@ -1027,6 +1057,10 @@ static int iwl_pcie_load_given_ucode(struct iwl_trans *trans,
 	if (iwl_pcie_dbg_on(trans))
 		iwl_pcie_apply_destination(trans);
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_dnt_configure(trans, image);
+#endif
+
 	iwl_enable_interrupts(trans);
 
 	/* release CPU reset */
@@ -1046,6 +1080,14 @@ static int iwl_pcie_load_given_ucode_8000(struct iwl_trans *trans,
 
 	if (iwl_pcie_dbg_on(trans))
 		iwl_pcie_apply_destination(trans);
+
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_dnt_configure(trans, image);
+#endif
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_pcie_override_secure_boot_cfg(trans);
+#endif
 
 	IWL_DEBUG_POWER(trans, "Original WFPM value = 0x%08X\n",
 			iwl_read_prph(trans, WFPM_GP2));
@@ -1120,6 +1162,7 @@ static const struct iwl_causes_list causes_list_common[] = {
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_ALIVE),
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_WAKEUP),
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_RESET_DONE),
+	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_TOP_FATAL_ERR),
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_CT_KILL),
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_RF_KILL),
 	IWL_CAUSE(CSR_MSIX_HW_INT_MASK_AD, MSIX_HW_INT_CAUSES_REG_PERIODIC),
@@ -1275,7 +1318,6 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans)
 		iwl_pcie_rx_napi_sync(trans);
 		iwl_pcie_tx_stop(trans);
 		iwl_pcie_rx_stop(trans);
-
 		/* Power-down device's busmaster DMA clocks */
 		if (!trans->cfg->apmg_not_supported) {
 			iwl_write_prph(trans, APMG_CLK_DIS_REG,
@@ -1656,7 +1698,7 @@ iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	u16 pci_cmd;
 	u32 max_rx_queues = IWL_MAX_RX_HW_QUEUES;
 
-	if (!cfg_trans->mq_rx_supported)
+	if (!cfg_trans->mq_rx_supported || iwlwifi_mod_params.disable_msix)
 		goto enable_msi;
 
 	if (cfg_trans->device_family <= IWL_DEVICE_FAMILY_9000)
@@ -2027,6 +2069,30 @@ void iwl_trans_pcie_free_pnvm_dram_regions(struct iwl_dram_regions *dram_regions
 	memset(desc_dram, 0, sizeof(*desc_dram));
 }
 
+static void iwl_pcie_free_invalid_tx_cmd(struct iwl_trans *trans)
+{
+	iwl_pcie_free_dma_ptr(trans, &trans->invalid_tx_cmd);
+}
+
+static int iwl_pcie_alloc_invalid_tx_cmd(struct iwl_trans *trans)
+{
+	struct iwl_cmd_header_wide bad_cmd = {
+		.cmd = INVALID_WR_PTR_CMD,
+		.group_id = DEBUG_GROUP,
+		.sequence = cpu_to_le16(0xffff),
+		.length = cpu_to_le16(0),
+		.version = 0,
+	};
+	int ret;
+
+	ret = iwl_pcie_alloc_dma_ptr(trans, &trans->invalid_tx_cmd,
+				     sizeof(bad_cmd));
+	if (ret)
+		return ret;
+	memcpy(trans->invalid_tx_cmd.addr, &bad_cmd, sizeof(bad_cmd));
+	return 0;
+}
+
 void iwl_trans_pcie_free(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -2056,6 +2122,8 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	} else {
 		iwl_pcie_free_ict(trans);
 	}
+
+	iwl_pcie_free_invalid_tx_cmd(trans);
 
 	iwl_pcie_free_fw_monitor(trans);
 
@@ -2095,8 +2163,11 @@ static void iwl_trans_pcie_removal_wk(struct work_struct *wk)
 	pci_lock_rescan_remove();
 	pci_dev_put(pdev);
 	pci_stop_and_remove_bus_device(pdev);
-	if (removal->rescan)
-		pci_rescan_bus(bus->parent);
+	if (removal->rescan && bus) {
+		if (bus->parent)
+			bus = bus->parent;
+		pci_rescan_bus(bus);
+	}
 	pci_unlock_rescan_remove();
 
 	kfree(removal);
@@ -2156,6 +2227,9 @@ bool __iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
 		   CSR_GP_CNTRL_REG_FLAG_GOING_TO_SLEEP;
 	u32 poll = CSR_GP_CNTRL_REG_VAL_MAC_ACCESS_EN;
 
+	if (test_bit(STATUS_TRANS_DEAD, &trans->status))
+		return false;
+
 	spin_lock(&trans_pcie->reg_lock);
 
 	if (trans_pcie->cmd_hold_nic_awake)
@@ -2195,6 +2269,9 @@ bool __iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
 	ret = iwl_poll_bit(trans, CSR_GP_CNTRL, poll, mask, 15000);
 	if (unlikely(ret < 0)) {
 		u32 cntrl = iwl_read32(trans, CSR_GP_CNTRL);
+		bool ma_integrated = (CSR_HW_REV_TYPE(trans->hw_rev) ==
+				      IWL_CFG_MAC_TYPE_MA) &&
+				     trans->trans_cfg->integrated;
 
 		WARN_ONCE(1,
 			  "Timeout waiting for hardware access (CSR_GP_CNTRL 0x%08x)\n",
@@ -2202,8 +2279,9 @@ bool __iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
 
 		iwl_trans_pcie_dump_regs(trans);
 
-		if (iwlwifi_mod_params.remove_when_gone && cntrl == ~0U)
-			iwl_trans_pcie_remove(trans, false);
+		if ((iwlwifi_mod_params.remove_when_gone || ma_integrated) &&
+		    cntrl == ~0U)
+			iwl_trans_pcie_remove(trans, ma_integrated);
 		else
 			iwl_write32(trans, CSR_RESET,
 				    CSR_RESET_REG_FLAG_FORCE_NMI);
@@ -2268,6 +2346,8 @@ out:
 static int iwl_trans_pcie_read_mem(struct iwl_trans *trans, u32 addr,
 				   void *buf, int dwords)
 {
+#define IWL_MAX_HW_ERRS 5
+	unsigned int num_consec_hw_errors = 0;
 	int offs = 0;
 	u32 *vals = buf;
 
@@ -2283,6 +2363,17 @@ static int iwl_trans_pcie_read_mem(struct iwl_trans *trans, u32 addr,
 			while (offs < dwords) {
 				vals[offs] = iwl_read32(trans,
 							HBUS_TARG_MEM_RDAT);
+
+				if (iwl_trans_is_hw_error_value(vals[offs]))
+					num_consec_hw_errors++;
+				else
+					num_consec_hw_errors = 0;
+
+				if (num_consec_hw_errors >= IWL_MAX_HW_ERRS) {
+					iwl_trans_release_nic_access(trans);
+					return -EIO;
+				}
+
 				offs++;
 
 				if (time_after(jiffies, end)) {
@@ -2540,7 +2631,7 @@ void iwl_pcie_dump_csr(struct iwl_trans *trans)
 	}
 }
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 /* create and remove of files */
 #define DEBUGFS_ADD_FILE(name, parent, mode) do {			\
 	debugfs_create_file(#name, mode, parent, trans,			\
@@ -2695,11 +2786,9 @@ static ssize_t iwl_dbgfs_rx_queue_read(struct file *file,
 		pos += scnprintf(buf + pos, bufsz - pos, "\tfree_count: %u\n",
 				 rxq->free_count);
 		if (rxq->rb_stts) {
-			u32 r =	__le16_to_cpu(iwl_get_closed_rb_stts(trans,
-								     rxq));
+			u32 r =	iwl_get_closed_rb_stts(trans, rxq);
 			pos += scnprintf(buf + pos, bufsz - pos,
-					 "\tclosed_rb_num: %u\n",
-					 r & 0x0FFF);
+					 "\tclosed_rb_num: %u\n", r);
 		} else {
 			pos += scnprintf(buf + pos, bufsz - pos,
 					 "\tclosed_rb_num: Not Allocated\n");
@@ -2740,7 +2829,7 @@ static ssize_t iwl_dbgfs_interrupt_read(struct file *file,
 			"\tLast Restarting Code:  0x%X\n",
 			isr_stats->err_code);
 	}
-#ifdef CONFIG_IWLWIFI_DEBUG
+#ifdef CPTCFG_IWLWIFI_DEBUG
 	pos += scnprintf(buf + pos, bufsz - pos, "Frame transmitted:\t\t %u\n",
 		isr_stats->sch);
 	pos += scnprintf(buf + pos, bufsz - pos, "Alive interrupt:\t\t %u\n",
@@ -3047,7 +3136,7 @@ static void iwl_trans_pcie_debugfs_cleanup(struct iwl_trans *trans)
 	data->state = IWL_FW_MON_DBGFS_STATE_DISABLED;
 	mutex_unlock(&data->mutex);
 }
-#endif /*CONFIG_IWLWIFI_DEBUGFS */
+#endif /*CPTCFG_IWLWIFI_DEBUGFS */
 
 static u32 iwl_trans_pcie_get_cmdlen(struct iwl_trans *trans, void *tfd)
 {
@@ -3070,9 +3159,9 @@ static u32 iwl_trans_pcie_dump_rbs(struct iwl_trans *trans,
 	struct iwl_rxq *rxq = &trans_pcie->rxq[0];
 	u32 i, r, j, rb_len = 0;
 
-	spin_lock(&rxq->lock);
+	spin_lock_bh(&rxq->lock);
 
-	r = le16_to_cpu(iwl_get_closed_rb_stts(trans, rxq)) & 0x0FFF;
+	r = iwl_get_closed_rb_stts(trans, rxq);
 
 	for (i = rxq->read, j = 0;
 	     i != r && j < allocated_rb_nums;
@@ -3094,7 +3183,7 @@ static u32 iwl_trans_pcie_dump_rbs(struct iwl_trans *trans,
 		*data = iwl_fw_error_next_data(*data);
 	}
 
-	spin_unlock(&rxq->lock);
+	spin_unlock_bh(&rxq->lock);
 
 	return rb_len;
 }
@@ -3368,9 +3457,7 @@ iwl_trans_pcie_dump_data(struct iwl_trans *trans,
 		/* Dump RBs is supported only for pre-9000 devices (1 queue) */
 		struct iwl_rxq *rxq = &trans_pcie->rxq[0];
 		/* RBs */
-		num_rbs =
-			le16_to_cpu(iwl_get_closed_rb_stts(trans, rxq))
-			& 0x0FFF;
+		num_rbs = iwl_get_closed_rb_stts(trans, rxq);
 		num_rbs = (num_rbs - rxq->read) & RX_QUEUE_MASK;
 		len += num_rbs * (sizeof(*data) +
 				  sizeof(struct iwl_fw_error_dump_rb) +
@@ -3495,7 +3582,9 @@ static void iwl_trans_pcie_sync_nmi(struct iwl_trans *trans)
 	iwl_trans_sync_nmi_with_addr(trans, inta_addr, sw_err_bit);
 }
 
+#define IWL_TRANS_REQUEST_FW
 #define IWL_TRANS_COMMON_OPS						\
+	IWL_TRANS_REQUEST_FW						\
 	.op_mode_leave = iwl_trans_pcie_op_mode_leave,			\
 	.write8 = iwl_trans_pcie_write8,				\
 	.write32 = iwl_trans_pcie_write32,				\
@@ -3539,7 +3628,7 @@ static const struct iwl_trans_ops trans_ops_pcie = {
 
 	.freeze_txq_timer = iwl_trans_txq_freeze_timer,
 	.block_txq_ptrs = iwl_trans_pcie_block_txq_ptrs,
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	.debugfs_cleanup = iwl_trans_pcie_debugfs_cleanup,
 #endif
 };
@@ -3566,7 +3655,7 @@ static const struct iwl_trans_ops trans_ops_pcie_gen2 = {
 	.set_pnvm = iwl_trans_pcie_ctx_info_gen3_set_pnvm,
 	.load_reduce_power = iwl_trans_pcie_ctx_info_gen3_load_reduce_power,
 	.set_reduce_power = iwl_trans_pcie_ctx_info_gen3_set_reduce_power,
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	.debugfs_cleanup = iwl_trans_pcie_debugfs_cleanup,
 #endif
 };
@@ -3580,9 +3669,19 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	int ret, addr_size;
 	const struct iwl_trans_ops *ops = &trans_ops_pcie_gen2;
 	void __iomem * const *table;
+	static int max_retry = 0;
+	u32 bar0;
 
 	if (!cfg_trans->gen2)
 		ops = &trans_ops_pcie;
+
+	/* reassign our BAR 0 if invalid due to possible runtime PM races */
+	pci_read_config_dword(pdev, PCI_BASE_ADDRESS_0, &bar0);
+	if (bar0 == PCI_BASE_ADDRESS_MEM_TYPE_64) {
+		ret = pci_assign_resource(pdev, 0);
+		if (ret)
+			return ERR_PTR(ret);
+	}
 
 	ret = pcim_enable_device(pdev);
 	if (ret)
@@ -3606,7 +3705,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	init_waitqueue_head(&trans_pcie->imr_waitq);
 
 	trans_pcie->rba.alloc_wq = alloc_workqueue("rb_allocator",
-						   WQ_HIGHPRI | WQ_UNBOUND, 0);
+						   WQ_HIGHPRI | WQ_UNBOUND, 1);
 	if (!trans_pcie->rba.alloc_wq) {
 		ret = -ENOMEM;
 		goto out_free_trans;
@@ -3625,8 +3724,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 				       PCIE_LINK_STATE_L1 |
 				       PCIE_LINK_STATE_CLKPM);
 	}
-
-	trans_pcie->def_rx_queue = 0;
 
 	pci_set_master(pdev);
 
@@ -3671,6 +3768,10 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans->hw_rev = iwl_read32(trans, CSR_HW_REV);
 	if (trans->hw_rev == 0xffffffff) {
 		dev_err(&pdev->dev, "HW_REV=0xFFFFFFFF, PCI issues?\n");
+		if (max_retry <= IWL_MAX_INIT_RETRY) {
+			iwl_trans_pcie_remove(trans, true);
+			max_retry++;
+		}
 		ret = -EIO;
 		goto out_no_pci;
 	}
@@ -3695,6 +3796,9 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 
 	init_waitqueue_head(&trans_pcie->sx_waitq);
 
+	ret = iwl_pcie_alloc_invalid_tx_cmd(trans);
+	if (ret)
+		goto out_no_pci;
 
 	if (trans_pcie->msix_enabled) {
 		ret = iwl_pcie_init_msix_handler(pdev, trans_pcie);
@@ -3715,7 +3819,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 		}
 	 }
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	trans_pcie->fw_mon_data.state = IWL_FW_MON_DBGFS_STATE_CLOSED;
 	mutex_init(&trans_pcie->fw_mon_data.mutex);
 #endif

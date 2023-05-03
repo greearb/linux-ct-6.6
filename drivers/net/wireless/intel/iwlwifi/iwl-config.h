@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018-2021 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2022 Intel Corporation
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  * Copyright (C) 2018-2023 Intel Corporation
  */
@@ -79,9 +79,9 @@ enum iwl_nvm_type {
 
 /* TX queue watchdog timeouts in mSecs */
 #define IWL_WATCHDOG_DISABLED	0
-#define IWL_DEF_WD_TIMEOUT	2500
-#define IWL_LONG_WD_TIMEOUT	10000
-#define IWL_MAX_WD_TIMEOUT	120000
+#define IWL_DEF_WD_TIMEOUT	(2500 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_LONG_WD_TIMEOUT	(10000 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_MAX_WD_TIMEOUT	(120000 * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 #define IWL_DEFAULT_MAX_TX_POWER 22
 #define IWL_TX_CSUM_NETIF_FLAGS (NETIF_F_IPV6_CSUM | NETIF_F_IP_CSUM |\
@@ -250,7 +250,6 @@ enum iwl_cfg_trans_ltr_delay {
  * RFID can be read before deciding the remaining parameters to use.
  *
  * @base_params: pointer to basic parameters
- * @csr: csr flags and addresses that are different across devices
  * @device_family: the device family
  * @umac_prph_offset: offset to add to UMAC periphery address
  * @xtal_latency: power up latency to get the xtal stabilized
@@ -319,7 +318,6 @@ struct iwl_fw_mon_regs {
  * @non_shared_ant: the antenna that is for WiFi only
  * @nvm_ver: NVM version
  * @nvm_calib_ver: NVM calibration version
- * @lib: pointer to the lib ops
  * @ht_params: point to ht parameters
  * @led_mode: 0=blinking, 1=On(RF On)/Off(RF Off)
  * @rx_with_siso_diversity: 1x1 device with rx antenna diversity
@@ -344,15 +342,12 @@ struct iwl_fw_mon_regs {
  * @nvm_type: see &enum iwl_nvm_type
  * @d3_debug_data_base_addr: base address where D3 debug data is stored
  * @d3_debug_data_length: length of the D3 debug data
- * @bisr_workaround: BISR hardware workaround (for 22260 series devices)
  * @min_txq_size: minimum number of slots required in a TX queue
  * @uhb_supported: ultra high band channels supported
  * @min_ba_txq_size: minimum number of slots required in a TX queue which
  *	based on hardware support (HE - 256, EHT - 1K).
  * @num_rbds: number of receive buffer descriptors to use
  *	(only used for multi-queue capable devices)
- * @mac_addr_csr_base: CSR base register for MAC address access, if not set
- *	assume 0x380
  *
  * We enable the driver to be backward compatible wrt. hardware features.
  * API differences in uCode shouldn't be handled here but through TLVs
@@ -536,52 +531,9 @@ extern const char iwl_ax231_name[];
 extern const char iwl_ax411_name[];
 extern const char iwl_bz_name[];
 extern const char iwl_sc_name[];
-#if IS_ENABLED(CONFIG_IWLDVM)
-extern const struct iwl_cfg iwl5300_agn_cfg;
-extern const struct iwl_cfg iwl5100_agn_cfg;
-extern const struct iwl_cfg iwl5350_agn_cfg;
-extern const struct iwl_cfg iwl5100_bgn_cfg;
-extern const struct iwl_cfg iwl5100_abg_cfg;
-extern const struct iwl_cfg iwl5150_agn_cfg;
-extern const struct iwl_cfg iwl5150_abg_cfg;
-extern const struct iwl_cfg iwl6005_2agn_cfg;
-extern const struct iwl_cfg iwl6005_2abg_cfg;
-extern const struct iwl_cfg iwl6005_2bg_cfg;
-extern const struct iwl_cfg iwl6005_2agn_sff_cfg;
-extern const struct iwl_cfg iwl6005_2agn_d_cfg;
-extern const struct iwl_cfg iwl6005_2agn_mow1_cfg;
-extern const struct iwl_cfg iwl6005_2agn_mow2_cfg;
-extern const struct iwl_cfg iwl1030_bgn_cfg;
-extern const struct iwl_cfg iwl1030_bg_cfg;
-extern const struct iwl_cfg iwl6030_2agn_cfg;
-extern const struct iwl_cfg iwl6030_2abg_cfg;
-extern const struct iwl_cfg iwl6030_2bgn_cfg;
-extern const struct iwl_cfg iwl6030_2bg_cfg;
-extern const struct iwl_cfg iwl6000i_2agn_cfg;
-extern const struct iwl_cfg iwl6000i_2abg_cfg;
-extern const struct iwl_cfg iwl6000i_2bg_cfg;
-extern const struct iwl_cfg iwl6000_3agn_cfg;
-extern const struct iwl_cfg iwl6050_2agn_cfg;
-extern const struct iwl_cfg iwl6050_2abg_cfg;
-extern const struct iwl_cfg iwl6150_bgn_cfg;
-extern const struct iwl_cfg iwl6150_bg_cfg;
-extern const struct iwl_cfg iwl1000_bgn_cfg;
-extern const struct iwl_cfg iwl1000_bg_cfg;
-extern const struct iwl_cfg iwl100_bgn_cfg;
-extern const struct iwl_cfg iwl100_bg_cfg;
-extern const struct iwl_cfg iwl130_bgn_cfg;
-extern const struct iwl_cfg iwl130_bg_cfg;
-extern const struct iwl_cfg iwl2000_2bgn_cfg;
-extern const struct iwl_cfg iwl2000_2bgn_d_cfg;
-extern const struct iwl_cfg iwl2030_2bgn_cfg;
-extern const struct iwl_cfg iwl6035_2agn_cfg;
-extern const struct iwl_cfg iwl6035_2agn_sff_cfg;
-extern const struct iwl_cfg iwl105_bgn_cfg;
-extern const struct iwl_cfg iwl105_bgn_d_cfg;
-extern const struct iwl_cfg iwl135_bgn_cfg;
-#endif /* CONFIG_IWLDVM */
-#if IS_ENABLED(CONFIG_IWLMVM)
+#if IS_ENABLED(CPTCFG_IWLMVM)
 extern const struct iwl_ht_params iwl_22000_ht_params;
+
 extern const struct iwl_cfg iwl7260_2ac_cfg;
 extern const struct iwl_cfg iwl7260_2ac_cfg_high_temp;
 extern const struct iwl_cfg iwl7260_2n_cfg;
@@ -602,6 +554,8 @@ extern const struct iwl_cfg iwl8260_2ac_cfg;
 extern const struct iwl_cfg iwl8265_2ac_cfg;
 extern const struct iwl_cfg iwl8275_2ac_cfg;
 extern const struct iwl_cfg iwl4165_2ac_cfg;
+#endif /* IS_ENABLED(CPTCFG_IWLMVM) */
+#if IS_ENABLED(CPTCFG_IWLMVM)
 extern const struct iwl_cfg iwl9260_2ac_cfg;
 extern const struct iwl_cfg iwl9560_qu_b0_jf_b0_cfg;
 extern const struct iwl_cfg iwl9560_qu_c0_jf_b0_cfg;
@@ -641,6 +595,6 @@ extern const struct iwl_cfg iwl_cfg_bz;
 extern const struct iwl_cfg iwl_cfg_gl;
 
 extern const struct iwl_cfg iwl_cfg_sc;
-#endif /* CONFIG_IWLMVM */
+#endif /* CPTCFG_IWLMVM */
 
 #endif /* __IWL_CONFIG_H__ */

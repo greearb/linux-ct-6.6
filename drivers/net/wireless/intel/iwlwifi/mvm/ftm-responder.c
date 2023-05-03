@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
- * Copyright (C) 2018-2022 Intel Corporation
+ * Copyright (C) 2018-2023 Intel Corporation
  */
 #include <net/cfg80211.h>
 #include <linux/etherdevice.h>
@@ -127,6 +127,17 @@ iwl_mvm_ftm_responder_cmd(struct iwl_mvm *mvm,
 	int cmd_size;
 
 	lockdep_assert_held(&mvm->mutex);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	cmd.cmd_valid_fields |= cpu_to_le32(IWL_MVM_FTM_RESP_VALID);
+	cmd.responder_cfg_flags |= cpu_to_le32(IWL_MVM_FTM_RESP_FLAGS);
+
+	if (IWL_MVM_FTM_RESP_TOA_OFFSET) {
+		cmd.cmd_valid_fields |=
+			cpu_to_le32(IWL_TOF_RESPONDER_FLAGS_TOA_OFFSET_MODE);
+		cmd.toa_offset = cpu_to_le16(IWL_MVM_FTM_RESP_TOA_OFFSET);
+	}
+#endif
 
 	/* Use a default of bss_color=1 for now */
 	if (cmd_ver == 9) {
@@ -302,7 +313,12 @@ static void iwl_mvm_resp_del_pasn_sta(struct iwl_mvm *mvm,
 				      struct iwl_mvm_pasn_sta *sta)
 {
 	list_del(&sta->list);
-	iwl_mvm_rm_sta_id(mvm, vif, sta->int_sta.sta_id);
+
+	if (iwl_mvm_has_mld_api(mvm->fw))
+		iwl_mvm_mld_rm_sta_id(mvm, sta->int_sta.sta_id);
+	else
+		iwl_mvm_rm_sta_id(mvm, vif, sta->int_sta.sta_id);
+
 	iwl_mvm_dealloc_int_sta(mvm, &sta->int_sta);
 	kfree(sta);
 }

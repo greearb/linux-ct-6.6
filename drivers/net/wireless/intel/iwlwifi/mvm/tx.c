@@ -7,7 +7,6 @@
 #include <linux/ieee80211.h>
 #include <linux/etherdevice.h>
 #include <linux/tcp.h>
-#include <net/gso.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 
@@ -262,8 +261,42 @@ static u32 iwl_mvm_get_tx_ant(struct iwl_mvm *mvm,
 	return BIT(mvm->mgmt_last_antenna_idx) << RATE_MCS_ANT_POS;
 }
 
+static u32 iwl_mvm_convert_rate_idx(struct iwl_mvm *mvm,
+				    struct ieee80211_tx_info *info,
+				    int rate_idx)
+{
+	u32 rate_flags = 0;
+	u8 rate_plcp;
+	bool is_cck;
+
+	/* if the rate isn't a well known legacy rate, take the lowest one */
+	if (rate_idx < 0 || rate_idx >= IWL_RATE_COUNT_LEGACY)
+		rate_idx = iwl_mvm_mac_ctxt_get_lowest_rate(mvm,
+							    info,
+							    info->control.vif);
+
+	/* Get PLCP rate for tx_cmd->rate_n_flags */
+	rate_plcp = iwl_mvm_mac80211_idx_to_hwrate(mvm->fw, rate_idx);
+	is_cck = (rate_idx >= IWL_FIRST_CCK_RATE) &&
+		 (rate_idx <= IWL_LAST_CCK_RATE);
+
+	/* Set CCK or OFDM flag */
+	if (iwl_fw_lookup_cmd_ver(mvm->fw, TX_CMD, 0) > 8) {
+		if (!is_cck)
+			rate_flags |= RATE_MCS_LEGACY_OFDM_MSK;
+		else
+			rate_flags |= RATE_MCS_CCK_MSK;
+	} else if (is_cck) {
+		rate_flags |= RATE_MCS_CCK_MSK_V1;
+	}
+
+	return (u32)rate_plcp | rate_flags;
+}
+
 static u32 iwl_mvm_get_inject_tx_rate(struct iwl_mvm *mvm,
-				      struct ieee80211_tx_info *info)
+				      struct ieee80211_tx_info *info,
+				      struct ieee80211_sta *sta,
+				      __le16 fc)
 {
 	struct ieee80211_tx_rate *rate = &info->control.rates[0];
 	u32 result;
@@ -288,6 +321,9 @@ static u32 iwl_mvm_get_inject_tx_rate(struct iwl_mvm *mvm,
 			result |= u32_encode_bits(2, RATE_MCS_CHAN_WIDTH_MSK_V1);
 		else if (rate->flags & IEEE80211_TX_RC_160_MHZ_WIDTH)
 			result |= u32_encode_bits(3, RATE_MCS_CHAN_WIDTH_MSK_V1);
+
+		if (iwl_fw_lookup_notif_ver(mvm->fw, LONG_GROUP, TX_CMD, 0) > 6)
+			result = iwl_new_rate_from_v1(result);
 	} else if (rate->flags & IEEE80211_TX_RC_MCS) {
 		result = RATE_MCS_HT_MSK_V1;
 		result |= u32_encode_bits(rate->idx,
@@ -301,12 +337,21 @@ static u32 iwl_mvm_get_inject_tx_rate(struct iwl_mvm *mvm,
 			result |= RATE_MCS_LDPC_MSK_V1;
 		if (u32_get_bits(info->flags, IEEE80211_TX_CTL_STBC))
 			result |= RATE_MCS_STBC_MSK;
+
+		if (iwl_fw_lookup_notif_ver(mvm->fw, LONG_GROUP, TX_CMD, 0) > 6)
+			result = iwl_new_rate_from_v1(result);
 	} else {
-		return 0;
+		int rate_idx = info->control.rates[0].idx;
+
+		result = iwl_mvm_convert_rate_idx(mvm, info, rate_idx);
 	}
 
-	if (iwl_fw_lookup_notif_ver(mvm->fw, LONG_GROUP, TX_CMD, 0) > 6)
-		return iwl_new_rate_from_v1(result);
+	if (info->control.antennas)
+		result |= u32_encode_bits(info->control.antennas,
+					  RATE_MCS_ANT_AB_MSK);
+	else
+		result |= iwl_mvm_get_tx_ant(mvm, info, sta, fc);
+
 	return result;
 }
 
@@ -315,17 +360,8 @@ static u32 iwl_mvm_get_tx_rate(struct iwl_mvm *mvm,
 			       struct ieee80211_sta *sta, __le16 fc)
 {
 	int rate_idx = -1;
-	u8 rate_plcp;
-	u32 rate_flags = 0;
-	bool is_cck;
 
-	if (unlikely(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT)) {
-		u32 result = iwl_mvm_get_inject_tx_rate(mvm, info);
-
-		if (result)
-			return result;
-		rate_idx = info->control.rates[0].idx;
-	} else if (!ieee80211_hw_check(mvm->hw, HAS_RATE_CONTROL)) {
+	if (!ieee80211_hw_check(mvm->hw, HAS_RATE_CONTROL)) {
 		/* info->control is only relevant for non HW rate control */
 
 		/* HT rate doesn't make sense for a non data frame */
@@ -348,35 +384,23 @@ static u32 iwl_mvm_get_tx_rate(struct iwl_mvm *mvm,
 
 		/* For 2.4 GHZ band, check that there is no need to remap */
 		BUILD_BUG_ON(IWL_FIRST_CCK_RATE != 0);
+
+#ifdef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
+		/* Force OFDM on each TX packet */
+		rate_idx = IWL_FIRST_OFDM_RATE;
+#endif
 	}
 
-	/* if the rate isn't a well known legacy rate, take the lowest one */
-	if (rate_idx < 0 || rate_idx >= IWL_RATE_COUNT_LEGACY)
-		rate_idx = iwl_mvm_mac_ctxt_get_lowest_rate(mvm,
-							    info,
-							    info->control.vif);
-
-	/* Get PLCP rate for tx_cmd->rate_n_flags */
-	rate_plcp = iwl_mvm_mac80211_idx_to_hwrate(mvm->fw, rate_idx);
-	is_cck = (rate_idx >= IWL_FIRST_CCK_RATE) && (rate_idx <= IWL_LAST_CCK_RATE);
-
-	/* Set CCK or OFDM flag */
-	if (iwl_fw_lookup_cmd_ver(mvm->fw, TX_CMD, 0) > 8) {
-		if (!is_cck)
-			rate_flags |= RATE_MCS_LEGACY_OFDM_MSK;
-		else
-			rate_flags |= RATE_MCS_CCK_MSK;
-	} else if (is_cck) {
-		rate_flags |= RATE_MCS_CCK_MSK_V1;
-	}
-
-	return (u32)rate_plcp | rate_flags;
+	return iwl_mvm_convert_rate_idx(mvm, info, rate_idx);
 }
 
 static u32 iwl_mvm_get_tx_rate_n_flags(struct iwl_mvm *mvm,
 				       struct ieee80211_tx_info *info,
 				       struct ieee80211_sta *sta, __le16 fc)
 {
+	if (unlikely(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))
+		return iwl_mvm_get_inject_tx_rate(mvm, info, sta, fc);
+
 	return iwl_mvm_get_tx_rate(mvm, info, sta, fc) |
 		iwl_mvm_get_tx_ant(mvm, info, sta, fc);
 }
@@ -407,6 +431,7 @@ void iwl_mvm_set_tx_cmd_rate(struct iwl_mvm *mvm, struct iwl_tx_cmd *tx_cmd,
 	 * table is controlled by LINK_QUALITY commands
 	 */
 
+#ifndef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
 	if (likely(ieee80211_is_data(fc) && sta &&
 		   !(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))) {
 		struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
@@ -420,6 +445,11 @@ void iwl_mvm_set_tx_cmd_rate(struct iwl_mvm *mvm, struct iwl_tx_cmd *tx_cmd,
 		tx_cmd->tx_flags |=
 			cpu_to_le32(TX_CMD_FLG_ACK | TX_CMD_FLG_BAR);
 	}
+#else
+	if (ieee80211_is_back_req(fc))
+			tx_cmd->tx_flags |=
+				cpu_to_le32(TX_CMD_FLG_ACK | TX_CMD_FLG_BAR);
+#endif
 
 	/* Set the rate in the TX cmd */
 	tx_cmd->rate_n_flags =
@@ -536,16 +566,20 @@ iwl_mvm_set_tx_params(struct iwl_mvm *mvm, struct sk_buff *skb,
 			flags |= IWL_TX_FLAGS_ENCRYPT_DIS;
 
 		/*
-		 * For data packets rate info comes from the fw. Only
-		 * set rate/antenna during connection establishment or in case
-		 * no station is given.
+		 * For data and mgmt packets rate info comes from the fw. Only
+		 * set rate/antenna for injected frames with fixed rate, or
+		 * when no sta is given.
 		 */
-		if (!sta || !ieee80211_is_data(hdr->frame_control) ||
-		    mvmsta->sta_state < IEEE80211_STA_AUTHORIZED) {
+		if (unlikely(!sta ||
+			     info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT)) {
 			flags |= IWL_TX_FLAGS_CMD_RATE;
 			rate_n_flags =
 				iwl_mvm_get_tx_rate_n_flags(mvm, info, sta,
 							    hdr->frame_control);
+		} else if (!ieee80211_is_data(hdr->frame_control) ||
+			   mvmsta->sta_state < IEEE80211_STA_AUTHORIZED) {
+			/* These are important frames */
+			flags |= IWL_TX_FLAGS_HIGH_PRI;
 		}
 
 		if (mvm->trans->trans_cfg->device_family >=
@@ -1375,7 +1409,7 @@ static void iwl_mvm_check_ratid_empty(struct iwl_mvm *mvm,
 	}
 }
 
-#ifdef CONFIG_IWLWIFI_DEBUG
+#ifdef CPTCFG_IWLWIFI_DEBUG
 const char *iwl_mvm_get_tx_fail_reason(u32 status)
 {
 #define TX_STATUS_FAIL(x) case TX_STATUS_FAIL_ ## x: return #x
@@ -1413,7 +1447,7 @@ const char *iwl_mvm_get_tx_fail_reason(u32 status)
 #undef TX_STATUS_FAIL
 #undef TX_STATUS_POSTPONE
 }
-#endif /* CONFIG_IWLWIFI_DEBUG */
+#endif /* CPTCFG_IWLWIFI_DEBUG */
 
 static int iwl_mvm_get_hwrate_chan_width(u32 chan_width)
 {
@@ -1665,7 +1699,8 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		/* Single frame failure in an AMPDU queue => send BAR */
 		if (info->flags & IEEE80211_TX_CTL_AMPDU &&
 		    !(info->flags & IEEE80211_TX_STAT_ACK) &&
-		    !(info->flags & IEEE80211_TX_STAT_TX_FILTERED) && !flushed)
+		    !(info->flags & IEEE80211_TX_STAT_TX_FILTERED) &&
+		    !flushed)
 			info->flags |= IEEE80211_TX_STAT_AMPDU_NO_BACK;
 		info->flags &= ~IEEE80211_TX_CTL_AMPDU;
 
@@ -1697,6 +1732,12 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		lq_color = TX_RES_RATE_TABLE_COL_GET(tx_resp->tlc_info);
 		info->status.status_driver_data[0] =
 			RS_DRV_DATA_PACK(lq_color, tx_resp->reduced_tpc);
+
+#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+		if (info->flags & IEEE80211_TX_STAT_ACK)
+			iwl_mvm_tdls_peer_cache_pkt(mvm, (void *)skb->data,
+						    skb->len, -1);
+#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		if (likely(!iwl_mvm_time_sync_frame(mvm, skb, hdr->addr1)))
 			ieee80211_tx_status(mvm->hw, skb);
@@ -1807,7 +1848,7 @@ out:
 	rcu_read_unlock();
 }
 
-#ifdef CONFIG_IWLWIFI_DEBUG
+#ifdef CPTCFG_IWLWIFI_DEBUG
 #define AGG_TX_STATE_(x) case AGG_TX_STATE_ ## x: return #x
 static const char *iwl_get_agg_tx_status(u16 status)
 {
@@ -1862,7 +1903,7 @@ static void iwl_mvm_rx_tx_cmd_agg_dbg(struct iwl_mvm *mvm,
 static void iwl_mvm_rx_tx_cmd_agg_dbg(struct iwl_mvm *mvm,
 				      struct iwl_rx_packet *pkt)
 {}
-#endif /* CONFIG_IWLWIFI_DEBUG */
+#endif /* CPTCFG_IWLWIFI_DEBUG */
 
 static void iwl_mvm_rx_tx_cmd_agg(struct iwl_mvm *mvm,
 				  struct iwl_rx_packet *pkt)
@@ -2012,6 +2053,10 @@ static void iwl_mvm_tx_reclaim(struct iwl_mvm *mvm, int sta_id, int tid,
 			else
 				WARN_ON_ONCE(tid != IWL_MAX_TID_COUNT);
 		}
+
+#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, skb->len, -1);
+#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		/* this is the first skb we deliver in this batch */
 		/* put the rate scaling data there */

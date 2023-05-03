@@ -39,7 +39,7 @@ struct uefi_cnv_common_step_data {
  * figure out why this is the case and how to make it work, simply
  * disable the feature in old kernels.
  */
-#ifdef CONFIG_EFI
+#if defined(CONFIG_EFI) && LINUX_VERSION_IS_GEQ(5,4,0)
 void *iwl_uefi_get_pnvm(struct iwl_trans *trans, size_t *len);
 u8 *iwl_uefi_get_reduced_power(struct iwl_trans *trans, size_t *len);
 int iwl_uefi_reduce_power_parse(struct iwl_trans *trans,
@@ -80,7 +80,7 @@ iwl_uefi_handle_tlv_mem_desc(struct iwl_trans *trans, const u8 *data,
 }
 #endif /* CONFIG_EFI */
 
-#if defined(CONFIG_EFI) && defined(CONFIG_ACPI)
+#if defined(CONFIG_EFI) && defined(CONFIG_ACPI) && LINUX_VERSION_IS_GEQ(5,4,0)
 void iwl_uefi_get_sgom_table(struct iwl_trans *trans, struct iwl_fw_runtime *fwrt);
 #else
 static inline

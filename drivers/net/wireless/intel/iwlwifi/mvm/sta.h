@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2012-2014, 2018-2022 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2023 Intel Corporation
  * Copyright (C) 2013-2014 Intel Mobile Communications GmbH
  * Copyright (C) 2015-2016 Intel Deutschland GmbH
  */
@@ -10,7 +10,6 @@
 #include <linux/spinlock.h>
 #include <net/mac80211.h>
 #include <linux/wait.h>
-#include <linux/average.h>
 
 #include "iwl-trans.h" /* for IWL_MAX_TID_COUNT */
 #include "fw-api.h" /* IWL_MVM_STATION_COUNT_MAX */
@@ -18,9 +17,6 @@
 
 struct iwl_mvm;
 struct iwl_mvm_vif;
-
-/* This makes us a 'struct ewma_signal {' object. */
-DECLARE_EWMA(signal, 10, 8);
 
 /**
  * DOC: DQA - Dynamic Queue Allocation -introduction
@@ -360,6 +356,7 @@ struct iwl_mvm_link_sta {
 
 /**
  * struct iwl_mvm_sta - representation of a station in the driver
+ * @vif: the interface the station belongs to
  * @tfd_queue_msk: the tfd queues used by the station
  * @mac_id_n_color: the MAC context this station is linked to
  * @tid_disable_agg: bitmap: if bit(tid) is set, the fw won't send ampdus for
@@ -374,7 +371,6 @@ struct iwl_mvm_link_sta {
  * and from Tx response flow, it needs a spinlock.
  * @tid_data: per tid data + mgmt. Look at %iwl_mvm_tid_data.
  * @tid_to_baid: a simple map of TID to baid
- * @vif: a vif pointer
  * @reserved_queue: the queue reserved for this STA for DQA purposes
  *	Every STA has is given one reserved queue to allow it to operate. If no
  *	such queue can be guaranteed, the STA addition will fail.
@@ -384,8 +380,8 @@ struct iwl_mvm_link_sta {
  * @amsdu_enabled: bitmap of TX AMSDU allowed TIDs.
  *	In case TLC offload is not active it is either 0xFFFF or 0.
  * @max_amsdu_len: max AMSDU length
+ * @sleeping: indicates the station is sleeping (when not offloaded to FW)
  * @agg_tids: bitmap of tids whose status is operational aggregated (IWL_AGG_ON)
- * @sleeping: sta sleep transitions in power management
  * @sleep_tx_count: the number of frames that we told the firmware to let out
  *	even when that station is asleep. This is useful in case the queue
  *	gets empty before all the frames were sent, which can happen when
@@ -393,7 +389,6 @@ struct iwl_mvm_link_sta {
  *	the BA window. To be used for UAPSD only.
  * @ptk_pn: per-queue PTK PN data structures
  * @dup_data: per queue duplicate packet detection data
- * @deferred_traffic_tid_map: indication bitmap of deferred traffic per-TID
  * @tx_ant: the index of the antenna to use for data tx to this station. Only
  *	used during connection establishment (e.g. for the 4 way handshake
  *	exchange).
@@ -443,10 +438,6 @@ struct iwl_mvm_sta {
 
 	struct iwl_mvm_link_sta deflink;
 	struct iwl_mvm_link_sta __rcu *link[IEEE80211_MLD_MAX_NUM_LINKS];
-
-	struct ewma_signal rx_avg_chain_signal[2];
-	struct ewma_signal rx_avg_signal;
-	struct ewma_signal rx_avg_beacon_signal;
 };
 
 u16 iwl_mvm_tid_queued(struct iwl_mvm *mvm, struct iwl_mvm_tid_data *tid_data);

@@ -801,8 +801,10 @@ iwl_fw_error_dump_file(struct iwl_fw_runtime *fwrt,
 
 	/* reading RXF/TXF sizes */
 	if (test_bit(STATUS_FW_ERROR, &fwrt->trans->status)) {
-		fifo_len = iwl_fw_rxf_len(fwrt, mem_cfg);
-		fifo_len += iwl_fw_txf_len(fwrt, mem_cfg);
+		if (!IS_ENABLED(CPTCFG_IWLWIFI_DONT_DUMP_FIFOS)) {
+			fifo_len = iwl_fw_rxf_len(fwrt, mem_cfg);
+			fifo_len += iwl_fw_txf_len(fwrt, mem_cfg);
+		}
 
 		/* Make room for PRPH registers */
 		if (iwl_fw_dbg_type_on(fwrt, IWL_FW_ERROR_DUMP_PRPH))
@@ -1635,10 +1637,12 @@ iwl_dump_ini_mem_fill_header(struct iwl_fw_runtime *fwrt,
 /**
  * mask_apply_and_normalize - applies mask on val and normalize the result
  *
- * The normalization is based on the first set bit in the mask
- *
  * @val: value
  * @mask: mask to apply and to normalize with
+ *
+ * The normalization is based on the first set bit in the mask
+ *
+ * Returns: the extracted value
  */
 static u32 mask_apply_and_normalize(u32 val, u32 mask)
 {
@@ -2078,15 +2082,16 @@ struct iwl_dump_ini_mem_ops {
 };
 
 /**
- * iwl_dump_ini_mem
- *
- * Creates a dump tlv and copy a memory region into it.
- * Returns the size of the current dump tlv or 0 if failed
+ * iwl_dump_ini_mem - dump memory region
  *
  * @fwrt: fw runtime struct
  * @list: list to add the dump tlv to
  * @reg_data: memory region
  * @ops: memory dump operations
+ *
+ * Creates a dump tlv and copy a memory region into it.
+ *
+ * Returns: the size of the current dump tlv or 0 if failed
  */
 static u32 iwl_dump_ini_mem(struct iwl_fw_runtime *fwrt, struct list_head *list,
 			    struct iwl_dump_ini_region_data *reg_data,
@@ -2265,7 +2270,7 @@ static u32 iwl_dump_ini_info(struct iwl_fw_runtime *fwrt,
 	 * according to the detected HW
 	 */
 	hw_type = CSR_HW_REV_TYPE(fwrt->trans->hw_rev);
-	if (hw_type == IWL_AX210_HW_TYPE) {
+	if (hw_type == IWL_AX210_HW_TYPE || hw_type == IWL_BNJ_HW_TYPE) {
 		u32 prph_val = iwl_read_umac_prph(fwrt->trans, WFPM_OTP_CFG1_ADDR);
 		u32 is_jacket = !!(prph_val & WFPM_OTP_CFG1_IS_JACKET_BIT);
 		u32 is_cdb = !!(prph_val & WFPM_OTP_CFG1_IS_CDB_BIT);
@@ -2276,8 +2281,9 @@ static u32 iwl_dump_ini_info(struct iwl_fw_runtime *fwrt,
 		 * these bits to the HW type. We won't have collisions since we
 		 * add these bits after the highest possible bit in the mask.
 		 */
-		hw_type |= masked_bits << IWL_AX210_HW_TYPE_ADDITION_SHIFT;
+		hw_type |= masked_bits << IWL_HW_TYPE_ADDITION_SHIFT;
 	}
+
 	dump->hw_type = cpu_to_le32(hw_type);
 
 	dump->rf_id_flavor =
@@ -2879,6 +2885,12 @@ int iwl_fw_start_dbg_conf(struct iwl_fw_runtime *fwrt, u8 conf_id)
 		IWL_INFO(fwrt, "FW already configured (%d) - re-configuring\n",
 			 fwrt->dump.conf);
 
+#if IS_ENABLED(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) && \
+	IS_ENABLED(CPTCFG_IWLMVM)
+	/* start default config marker cmd for syncing logs */
+	if (fwrt->trans->dbg_cfg.enable_timestamp_marker_cmd)
+		iwl_fw_trigger_timestamp(fwrt, 1);
+#endif
 	/* Send all HCMDs for configuring the FW debug */
 	ptr = (void *)&fwrt->fw->dbg.conf_tlv[conf_id]->hcmd;
 	for (i = 0; i < fwrt->fw->dbg.conf_tlv[conf_id]->num_of_hcmds; i++) {
@@ -2953,6 +2965,13 @@ static void iwl_fw_dbg_collect_sync(struct iwl_fw_runtime *fwrt, u8 wk_idx)
 		IWL_ERR(fwrt, "Skip fw error dump since bus is dead\n");
 		goto out;
 	}
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (fwrt->trans->dbg_cfg.disable_wrt_dump) {
+		IWL_INFO(fwrt,
+			 "WRT: Data collection disabled by iwl-dbg-cfg.ini\n");
+		goto out;
+	}
+#endif
 
 	iwl_fw_dbg_stop_restart_recording(fwrt, &params, true);
 
@@ -3042,8 +3061,15 @@ void iwl_fw_error_dump_wk(struct work_struct *work)
 {
 	struct iwl_fwrt_wk_data *wks =
 		container_of(work, typeof(*wks), wk.work);
-	struct iwl_fw_runtime *fwrt =
-		container_of(wks, typeof(*fwrt), dump.wks[wks->idx]);
+	struct iwl_fw_runtime *fwrt;
+
+	if (wks->idx >= IWL_FW_RUNTIME_DUMP_WK_NUM) {
+		fwrt = container_of(wks, typeof(*fwrt), dump.wks[0]);
+		IWL_ERR(fwrt, "invalid worker index %d\n", wks->idx);
+		return;
+	}
+
+	fwrt = container_of(wks, typeof(*fwrt), dump.wks[wks->idx]);
 
 	/* assumes the op mode mutex is locked in dump_start since
 	 * iwl_fw_dbg_collect_sync can't run in parallel
@@ -3192,8 +3218,7 @@ int iwl_fw_send_timestamp_marker_cmd(struct iwl_fw_runtime *fwrt)
 
 	if (cmd_ver > 1 && hcmd.resp_pkt) {
 		resp = (void *)hcmd.resp_pkt->data;
-		IWL_DEBUG_INFO(fwrt, "FW GP2 time: %u\n",
-			       le32_to_cpu(resp->gp2));
+		IWL_DEBUG_INFO(fwrt, "FW GP2 time: %u\n", le32_to_cpu(resp->gp2));
 	}
 
 	return ret;
@@ -3218,7 +3243,7 @@ void iwl_fw_dbg_stop_restart_recording(struct iwl_fw_runtime *fwrt,
 	} else {
 		ret = iwl_fw_dbg_restart_recording(fwrt->trans, params);
 	}
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (!ret) {
 		if (stop)
 			fwrt->trans->dbg.rec_on = false;
@@ -3228,3 +3253,38 @@ void iwl_fw_dbg_stop_restart_recording(struct iwl_fw_runtime *fwrt,
 #endif
 }
 IWL_EXPORT_SYMBOL(iwl_fw_dbg_stop_restart_recording);
+
+void iwl_fw_disable_dbg_asserts(struct iwl_fw_runtime *fwrt)
+{
+	struct iwl_fw_dbg_config_cmd cmd = {
+		.type = cpu_to_le32(DEBUG_TOKEN_CONFIG_TYPE),
+		.conf = cpu_to_le32(IWL_FW_DBG_CONFIG_TOKEN),
+	};
+	struct iwl_host_cmd hcmd = {
+		.id = WIDE_ID(LONG_GROUP, LDBG_CONFIG_CMD),
+		.data[0] = &cmd,
+		.len[0] = sizeof(cmd),
+	};
+	u32 preset = u32_get_bits(fwrt->trans->dbg.domains_bitmap,
+				  GENMASK(31, IWL_FW_DBG_DOMAIN_POS + 1));
+
+	/* supported starting from 9000 devices */
+	if (fwrt->trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_9000)
+		return;
+
+	if (fwrt->trans->dbg.yoyo_bin_loaded || (preset && preset != 1))
+		return;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	/* don't send this command when explicitly asked to enable
+	 * debug asserts or FW_DBG_PRESET is present in ini file with
+	 * any value.
+	 */
+	if (fwrt->trans->dbg_cfg.enable_dbg_asserts ||
+	    fwrt->trans->dbg_cfg.FW_DBG_DOMAIN != IWL_FW_DBG_DOMAIN)
+		return;
+#endif
+
+	iwl_trans_send_cmd(fwrt->trans, &hcmd);
+}
+IWL_EXPORT_SYMBOL(iwl_fw_disable_dbg_asserts);

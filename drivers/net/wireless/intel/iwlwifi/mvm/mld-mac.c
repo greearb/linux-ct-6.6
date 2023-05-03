@@ -8,6 +8,7 @@ static void iwl_mvm_mld_set_he_support(struct iwl_mvm *mvm,
 				       struct ieee80211_vif *vif,
 				       struct iwl_mac_config_cmd *cmd)
 {
+
 	if (vif->type == NL80211_IFTYPE_AP)
 		cmd->he_ap_support = cpu_to_le16(1);
 	else
@@ -42,7 +43,8 @@ static void iwl_mvm_mld_mac_ctxt_cmd_common(struct iwl_mvm *mvm,
 	if (iwlwifi_mod_params.disable_11ax)
 		return;
 
-	/* If we have MLO enabled, then the firmware needs to enable
+	/*
+	 * If we have MLO enabled, then the firmware needs to enable
 	 * address translation for the station(s) we add. That depends
 	 * on having EHT enabled in firmware, which in turn depends on
 	 * mac80211 in the code below.

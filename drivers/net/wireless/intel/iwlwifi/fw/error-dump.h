@@ -373,8 +373,10 @@ struct iwl_fw_ini_dump_cfg_name {
 
 /* AX210's HW type */
 #define IWL_AX210_HW_TYPE 0x42
+/* Bnj's HW type */
+#define IWL_BNJ_HW_TYPE 0x47
 /* How many bits to roll when adding to the HW type of AX210 HW */
-#define IWL_AX210_HW_TYPE_ADDITION_SHIFT 12
+#define IWL_HW_TYPE_ADDITION_SHIFT 12
 
 /* struct iwl_fw_ini_dump_info - ini dump information
  * @version: dump version
@@ -535,6 +537,8 @@ iwl_fw_error_next_data(struct iwl_fw_error_dump_data *data)
  * @FW_DBG_TDLS: trigger log collection upon TDLS related events.
  * @FW_DBG_TRIGGER_TX_STATUS: trigger log collection upon tx status when
  *  the firmware sends a tx reply.
+ * @FW_DBG_TRIGGER_USER_EXTENDED: trigger log collection upon user space
+ *  request.
  * @FW_DBG_TRIGGER_ALIVE_TIMEOUT: trigger log collection if alive flow timeouts
  * @FW_DBG_TRIGGER_DRIVER: trigger log collection upon a flow failure
  *	in the driver.
@@ -555,6 +559,7 @@ enum iwl_fw_dbg_trigger {
 	FW_DBG_TRIGGER_TX_LATENCY,
 	FW_DBG_TRIGGER_TDLS,
 	FW_DBG_TRIGGER_TX_STATUS,
+	FW_DBG_TRIGGER_USER_EXTENDED,
 	FW_DBG_TRIGGER_ALIVE_TIMEOUT,
 	FW_DBG_TRIGGER_DRIVER,
 

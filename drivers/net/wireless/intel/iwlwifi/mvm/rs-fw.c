@@ -85,24 +85,18 @@ static u16 rs_fw_get_config_flags(struct iwl_mvm *mvm,
 
 	if (mvm->cfg->ht_params->ldpc &&
 	    ((ht_cap->cap & IEEE80211_HT_CAP_LDPC_CODING) ||
-	     (vht_ena && (vht_cap->cap & IEEE80211_VHT_CAP_RXLDPC)))) {
-		pr_info("enabling LDPC due to HT Cap");
+	     (vht_ena && (vht_cap->cap & IEEE80211_VHT_CAP_RXLDPC))))
 		flags |= IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK;
-	}
 
 	/* consider LDPC support in case of HE */
 	if (he_cap->has_he && (he_cap->he_cap_elem.phy_cap_info[1] &
-			       IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD)) {
-		pr_info("enabling LDPC due to HE cap");
+	    IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD))
 		flags |= IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK;
-	}
 
 	if (sband_he_cap &&
 	    !(sband_he_cap->he_cap_elem.phy_cap_info[1] &
-	      IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD)) {
-		pr_info("Disabling LDPC due to not HE-PHY-CAP1");
+			IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD))
 		flags &= ~IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK;
-	}
 
 	if (he_cap->has_he &&
 	    (he_cap->he_cap_elem.phy_cap_info[3] &
@@ -111,13 +105,6 @@ static u16 rs_fw_get_config_flags(struct iwl_mvm *mvm,
 	     sband_he_cap->he_cap_elem.phy_cap_info[3] &
 			IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_MASK))
 		flags |= IWL_TLC_MNG_CFG_FLAGS_HE_DCM_NSS_1_MSK;
-
-	if (he_cap->has_he) {
-		if (!(flags & IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK)) {
-			pr_info("WARNING:  HE capability but LDPC not selected.  Force-enabling.\n");
-			flags |= IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK;
-		}
-	}
 
 	return flags;
 }
@@ -521,6 +508,8 @@ void iwl_mvm_tlc_update_notif(struct iwl_mvm *mvm,
 				link_sta->agg.max_tid_amsdu_len[i] = 1;
 		}
 
+		ieee80211_sta_recalc_aggregates(sta);
+
 		IWL_DEBUG_RATE(mvm,
 			       "AMSDU update. AMSDU size: %d, AMSDU selected size: %d, AMSDU TID bitmap 0x%X\n",
 			       le32_to_cpu(notif->amsdu_size), size,
@@ -530,6 +519,29 @@ out:
 	rcu_read_unlock();
 }
 
+int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data)
+{
+	struct {
+		struct iwl_dhc_cmd dhc;
+		struct iwl_dhc_tlc_cmd tlc;
+	} __packed cmd = {
+		.tlc.sta_id = sta_id,
+		.tlc.type = cpu_to_le32(type),
+		.tlc.data[0] = cpu_to_le32(data),
+		.dhc.length = cpu_to_le32(sizeof(cmd.tlc) >> 2),
+		.dhc.index_and_mask =
+			cpu_to_le32(DHC_TABLE_INTEGRATION | DHC_TARGET_UMAC |
+				    DHC_INTEGRATION_TLC_DEBUG_CONFIG),
+	};
+	u32 cmd_id = WIDE_ID(IWL_ALWAYS_LONG_GROUP, DEBUG_HOST_COMMAND);
+	int ret;
+
+	ret = iwl_mvm_send_cmd_pdu(mvm, cmd_id, CMD_ASYNC, sizeof(cmd), &cmd);
+	IWL_DEBUG_RATE(mvm, "sta_id %d, type: 0x%X, value: 0x%X, ret%d\n",
+		       sta_id, type, data, ret);
+	return ret;
+}
+
 u16 rs_fw_get_max_amsdu_len(struct ieee80211_sta *sta,
 			    struct ieee80211_bss_conf *link_conf,
 			    struct ieee80211_link_sta *link_sta)
@@ -537,6 +549,19 @@ u16 rs_fw_get_max_amsdu_len(struct ieee80211_sta *sta,
 	const struct ieee80211_sta_vht_cap *vht_cap = &link_sta->vht_cap;
 	const struct ieee80211_sta_ht_cap *ht_cap = &link_sta->ht_cap;
 	const struct ieee80211_sta_eht_cap *eht_cap = &link_sta->eht_cap;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	struct ieee80211_vif *vif = iwl_mvm_sta_from_mac80211(sta)->vif;
+	struct iwl_mvm *mvm;
+
+	if (WARN_ON_ONCE(!vif))
+		return 0;
+
+	mvm = iwl_mvm_vif_from_mac80211(vif)->mvm;
+
+	if (mvm->trans->dbg_cfg.amsdu_in_ampdu_disabled)
+		return 0;
+#endif
 
 	if (WARN_ON_ONCE(!link_conf->chandef.chan))
 		return IEEE80211_MAX_MPDU_LEN_VHT_3895;
@@ -616,12 +641,16 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 				cpu_to_le16(max_amsdu_len) : 0,
 	};
 	unsigned int link_id = link_conf->link_id;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
 	int cmd_ver;
 	int ret;
 
 	/* Enable external EHT LTF only for GL device and if there's
 	 * mutual support by AP and client
 	 */
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!mvm->trans->dbg_cfg.eht_disable_extra_ltf)
+#endif
 	if (CSR_HW_REV_TYPE(mvm->trans->hw_rev) == IWL_CFG_MAC_TYPE_GL &&
 	    sband_eht_cap &&
 	    sband_eht_cap->eht_cap_elem.phy_cap_info[5] &
@@ -648,18 +677,34 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 
 	rcu_read_unlock();
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	iwl_mvm_reset_frame_stats(mvm);
 #endif
 	rs_fw_set_supp_rates(vif, link_sta, sband,
 			     sband_he_cap, sband_eht_cap,
 			     &cfg_cmd);
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	/*
+	 * if AP disables mimo on 160bw
+	 * (!cfg_cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_160])
+	 * and AP enables siso on 160
+	 * cfg_cmd.ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_160]
+	 * we disable mimo on 80bw cmd->ht_rates[1][0]
+	 */
+	if (mvm->trans->dbg_cfg.tx_siso_80bw_like_160bw &&
+	    cfg_cmd.ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_160] &&
+	    !cfg_cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_160])
+		cfg_cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80] = 0;
+#endif
 
 	/*
 	 * since TLC offload works with one mode we can assume
 	 * that only vht/ht is used and also set it as station max amsdu
 	 */
-	sta->deflink.agg.max_amsdu_len = max_amsdu_len;
+	link_sta->agg.max_amsdu_len = max_amsdu_len;
+	ieee80211_sta_recalc_aggregates(sta);
+
+	cfg_cmd.max_tx_op = cpu_to_le16(mvmvif->max_tx_op);
 
 	cmd_ver = iwl_fw_lookup_cmd_ver(mvm->fw,
 					WIDE_ID(DATA_PATH_GROUP,
@@ -713,18 +758,15 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 
 	if (ret)
 		IWL_ERR(mvm, "Failed to send rate scale config (%d)\n", ret);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.ampdu_limit)
+		iwl_rs_dhc_set_ampdu_size(sta, link_sta,
+					  mvm->trans->dbg_cfg.ampdu_limit);
+#endif
 }
 
-int rs_fw_tx_protection(struct iwl_mvm *mvm, struct iwl_mvm_sta *mvmsta,
-			bool enable)
-{
-	/* TODO: need to introduce a new FW cmd since LQ cmd is not relevant */
-	IWL_DEBUG_RATE(mvm, "tx protection - not implemented yet.\n");
-	return 0;
-}
-
-void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm,
-			     struct iwl_mvm_link_sta *link_sta)
+void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm, struct iwl_mvm_link_sta *link_sta)
 {
 	struct iwl_lq_sta_rs_fw *lq_sta;
 
@@ -738,7 +780,7 @@ void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm,
 	lq_sta->pers.last_rssi = S8_MIN;
 	lq_sta->last_rate_n_flags = 0;
 
-#ifdef CONFIG_MAC80211_DEBUGFS
+#ifdef CPTCFG_MAC80211_DEBUGFS
 	lq_sta->pers.dbg_fixed_rate = 0;
 #endif
 }
@@ -758,4 +800,12 @@ void iwl_mvm_rs_add_sta(struct iwl_mvm *mvm, struct iwl_mvm_sta *mvmsta)
 
 		iwl_mvm_rs_add_sta_link(mvm, link);
 	}
+}
+
+int rs_fw_tx_protection(struct iwl_mvm *mvm, struct iwl_mvm_sta *mvmsta,
+			bool enable)
+{
+	/* TODO: need to introduce a new FW cmd since LQ cmd is not relevant */
+	IWL_DEBUG_RATE(mvm, "tx protection - not implemented yet.\n");
+	return 0;
 }

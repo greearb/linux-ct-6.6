@@ -69,6 +69,11 @@ static const struct dmi_system_id dmi_ppag_approved_list[] = {
 			DMI_MATCH(DMI_SYS_VENDOR, "Alienware"),
 		},
 	},
+	{ .ident = "RAZER",
+	  .matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Razer"),
+		},
+	},
 	{}
 };
 
@@ -592,6 +597,10 @@ int iwl_sar_select_profile(struct iwl_fw_runtime *fwrt,
 			break;
 	}
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	fwrt->sar_chain_a_profile = prof_a;
+	fwrt->sar_chain_b_profile = prof_b;
+#endif
 	return ret;
 }
 IWL_EXPORT_SYMBOL(iwl_sar_select_profile);
@@ -1006,6 +1015,7 @@ __le32 iwl_acpi_get_lari_config_bitmap(struct iwl_fw_runtime *fwrt)
 {
 	int ret;
 	u8 value;
+	u32 val;
 	__le32 config_bitmap = 0;
 
 	/*
@@ -1032,6 +1042,23 @@ __le32 iwl_acpi_get_lari_config_bitmap(struct iwl_fw_runtime *fwrt)
 		else if (value == DSM_VALUE_SRD_DISABLE)
 			config_bitmap |=
 				cpu_to_le32(LARI_CONFIG_CHANGE_ETSI_TO_DISABLED_MSK);
+	}
+
+	if (fw_has_capa(&fwrt->fw->ucode_capa,
+			IWL_UCODE_TLV_CAPA_CHINA_22_REG_SUPPORT)) {
+		/*
+		 ** Evaluate func 'DSM_FUNC_REGULATORY_CONFIG'
+		 */
+		ret = iwl_acpi_get_dsm_u32(fwrt->dev, 0,
+					   DSM_FUNC_REGULATORY_CONFIG,
+					   &iwl_guid, &val);
+		/*
+		 * China 2022 enable if the BIOS object does not exist or
+		 * if it is enabled in BIOS.
+		 */
+		if (ret < 0 || val & DSM_MASK_CHINA_22_REG)
+			config_bitmap |=
+				cpu_to_le32(LARI_CONFIG_ENABLE_CHINA_22_REG_SUPPORT_MSK);
 	}
 
 	return config_bitmap;
@@ -1184,9 +1211,8 @@ int iwl_read_ppag_table(struct iwl_fw_runtime *fwrt, union iwl_ppag_table_cmd *c
                 gain = cmd->v1.gain[0];
                 *cmd_size = sizeof(cmd->v1);
                 if (fwrt->ppag_ver == 1 || fwrt->ppag_ver == 2) {
-			/* in this case FW supports revision 0 */
                         IWL_DEBUG_RADIO(fwrt,
-					"PPAG table rev is %d, send truncated table\n",
+					"PPAG table rev is %d but FW supports rev 0, sending truncated table\n",
                                         fwrt->ppag_ver);
 		}
 	} else if (cmd_ver >= 2 && cmd_ver <= 4) {
@@ -1194,16 +1220,15 @@ int iwl_read_ppag_table(struct iwl_fw_runtime *fwrt, union iwl_ppag_table_cmd *c
                 gain = cmd->v2.gain[0];
                 *cmd_size = sizeof(cmd->v2);
                 if (fwrt->ppag_ver == 0) {
-			/* in this case FW supports revisions 1 or 2 */
                         IWL_DEBUG_RADIO(fwrt,
-					"PPAG table rev is 0, send padded table\n");
+					"PPAG table rev is 0 but FW supports rev 1 or 2, sending padded table\n");
                 }
         } else {
                 IWL_DEBUG_RADIO(fwrt, "Unsupported PPAG command version\n");
                 return -EINVAL;
         }
 
-	/* ppag mode */
+	// ppag mode
 	IWL_DEBUG_RADIO(fwrt,
 			"PPAG MODE bits were read from bios: %d\n",
 			cmd->v1.flags & cpu_to_le32(ACPI_PPAG_MASK));

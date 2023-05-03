@@ -24,16 +24,22 @@ static u32 iwl_mvm_get_sec_sta_mask(struct iwl_mvm *mvm,
 			return 0;
 	}
 
-	/* AP group keys are per link and should be on the mcast STA */
+	/* AP group keys are per link and should be on the mcast/bcast STA */
 	if (vif->type == NL80211_IFTYPE_AP &&
-	    !(keyconf->flags & IEEE80211_KEY_FLAG_PAIRWISE))
+	    !(keyconf->flags & IEEE80211_KEY_FLAG_PAIRWISE)) {
+		/* IGTK/BIGTK to bcast STA */
+		if (keyconf->keyidx >= 4)
+			return BIT(link_info->bcast_sta.sta_id);
+		/* GTK for data to mcast STA */
 		return BIT(link_info->mcast_sta.sta_id);
+	}
 
 	/* for client mode use the AP STA also for group keys */
 	if (!sta && vif->type == NL80211_IFTYPE_STATION)
 		sta = mvmvif->ap_sta;
 
-	/* During remove the STA was removed and the group keys come later
+	/*
+	 * During remove the STA was removed and the group keys come later
 	 * (which sounds like a bad sequence, but remember that to mac80211 the
 	 * group keys have no sta pointer), so we don't have a STA now.
 	 * Since this happens for group keys only, just use the link_info as
@@ -267,7 +273,8 @@ int iwl_mvm_sec_key_add(struct iwl_mvm *mvm,
 	if (mvm_link)
 		mvm_link->igtk = keyconf;
 
-	/* We don't really need this, but need it to be not invalid,
+	/*
+	 * We don't really need this, but need it to be not invalid,
 	 * and if we switch links multiple times it might go to be
 	 * invalid when removed.
 	 */

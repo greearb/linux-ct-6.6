@@ -33,7 +33,7 @@ enum iwl_amsdu_size {
 	IWL_AMSDU_8K = 2,
 	IWL_AMSDU_12K = 3,
 	/* Add 2K at the end to avoid breaking current API */
-	IWL_AMSDU_2K = 4, /* ax200 blows up if you set it to this */
+	IWL_AMSDU_2K = 4,
 };
 
 enum iwl_uapsd_disable {
@@ -59,7 +59,9 @@ enum iwl_uapsd_disable {
  * @nvm_file: specifies a external NVM file
  * @uapsd_disable: disable U-APSD, see &enum iwl_uapsd_disable, default =
  *	IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT
+ * @xvt_default_mode: xVT is the default operation mode, default = false
  * @disable_11ac: disable VHT capabilities, default = false.
+ * @disable_msix: disable MSI-X and fall back to MSI on PCIe, default = false.
  * @remove_when_gone: remove an inaccessible device from the PCIe bus.
  * @enable_ini: enable new FW debug infratructure (INI TLVs)
  * @disable_11be: disable EHT capabilities, default = false.
@@ -73,8 +75,11 @@ struct iwl_mod_params {
 	int led_mode;
 	bool power_save;
 	int power_level;
-#ifdef CONFIG_IWLWIFI_DEBUG
+#ifdef CPTCFG_IWLWIFI_DEBUG
 	u32 debug_level;
+#endif
+#if IS_ENABLED(CPTCFG_IWLXVT)
+	bool xvt_default_mode;
 #endif
 	char *nvm_file;
 	u32 uapsd_disable;
@@ -83,9 +88,11 @@ struct iwl_mod_params {
 	 * @disable_11ax: disable HE capabilities, default = false
 	 */
 	bool disable_11ax;
+	bool disable_msix;
 	bool remove_when_gone;
 	u32 enable_ini;
 	bool disable_11be;
+
 };
 
 static inline bool iwl_enable_rx_ampdu(void)

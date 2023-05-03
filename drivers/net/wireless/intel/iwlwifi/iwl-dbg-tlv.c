@@ -218,6 +218,13 @@ static int iwl_dbg_tlv_alloc_region(struct iwl_trans *trans,
 		return -EOPNOTSUPP;
 	}
 
+#ifdef CPTCFG_IWLWIFI_DONT_DUMP_FIFOS
+	if (type == IWL_FW_INI_REGION_DEVICE_MEMORY &&
+	    reg->sub_type == IWL_FW_INI_REGION_DEVICE_MEMORY_SUBTYPE_HW_SMEM) {
+		IWL_DEBUG_FW(trans, "WRT: skipping HW-SMEM region\n");
+		return 0;
+	}
+#endif
 	if (type == IWL_FW_INI_REGION_INTERNAL_BUFFER) {
 		trans->dbg.imr_data.sram_addr =
 			le32_to_cpu(reg->internal_buffer.base_addr);
@@ -236,6 +243,14 @@ static int iwl_dbg_tlv_alloc_region(struct iwl_trans *trans,
 	*active_reg = kmemdup(tlv, tlv_len, GFP_KERNEL);
 	if (!*active_reg)
 		return -ENOMEM;
+
+#ifdef CPTCFG_IWLWIFI_DONT_DUMP_FIFOS
+	if (type == IWL_FW_INI_REGION_TXF || type == IWL_FW_INI_REGION_RXF) {
+		struct iwl_fw_ini_region_tlv *reg = (void *)(*active_reg)->data;
+
+		reg->fifos.hdr_only = cpu_to_le32(1);
+	}
+#endif
 
 	IWL_DEBUG_FW(trans, "WRT: Enabling region id %u type %u\n", id, type);
 
@@ -509,6 +524,8 @@ void iwl_dbg_tlv_load_bin(struct device *dev, struct iwl_trans *trans)
 	if (res)
 		return;
 
+	trans->dbg.yoyo_bin_loaded = true;
+
 	iwl_dbg_tlv_parse_bin(trans, fw->data, fw->size);
 
 	release_firmware(fw);
@@ -728,8 +745,8 @@ static void iwl_dbg_tlv_apply_buffers(struct iwl_fw_runtime *fwrt)
 		ret = iwl_dbg_tlv_apply_buffer(fwrt, i);
 		if (ret)
 			IWL_WARN(fwrt,
-				 "WRT: Failed to apply DRAM buffer for allocation id %d, ret=%d\n",
-				 i, ret);
+				"WRT: Failed to apply DRAM buffer for allocation id %d, ret=%d\n",
+				i, ret);
 	}
 }
 
@@ -1290,7 +1307,8 @@ static void iwl_dbg_tlv_init_cfg(struct iwl_fw_runtime *fwrt)
 			iwl_dbg_tlv_gen_active_trig_list(fwrt, tp);
 		}
 	} else if (*ini_dest != IWL_FW_INI_LOCATION_DRAM_PATH) {
-		/* For DRAM, go through the loop below to clear all the buffers
+		/*
+		 * For DRAM, go through the loop below to clear all the buffers
 		 * properly on restart, otherwise garbage may be left there and
 		 * leak into new debug dumps.
 		 */

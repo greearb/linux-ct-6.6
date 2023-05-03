@@ -238,7 +238,8 @@ int iwl_mvm_mld_add_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 				       IWL_MAX_TID_COUNT, &wdg_timeout);
 }
 
-/* Allocate a new station entry for the broadcast station to the given vif,
+/*
+ * Allocate a new station entry for the broadcast station to the given vif,
  * and send it to the FW.
  * Note that each AP/GO mac should have its own multicast station.
  */
@@ -259,7 +260,8 @@ int iwl_mvm_mld_add_mcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		    vif->type != NL80211_IFTYPE_ADHOC))
 		return -EOPNOTSUPP;
 
-	/* In IBSS, ieee80211_check_queues() sets the cab_queue to be
+	/*
+	 * In IBSS, ieee80211_check_queues() sets the cab_queue to be
 	 * invalid, so make sure we use the queue we want.
 	 * Note that this is done here as we want to avoid making DQA
 	 * changes in mac80211 layer.
@@ -295,7 +297,8 @@ int iwl_mvm_mld_add_aux_sta(struct iwl_mvm *mvm, u32 lmac_id)
 {
 	lockdep_assert_held(&mvm->mutex);
 
-	/* In CDB NICs we need to specify which lmac to use for aux activity;
+	/*
+	 * In CDB NICs we need to specify which lmac to use for aux activity;
 	 * use the link_id argument place to send lmac_id to the function.
 	 */
 	return iwl_mvm_mld_add_int_sta(mvm, &mvm->aux_sta, &mvm->aux_queue,
@@ -390,7 +393,8 @@ int iwl_mvm_mld_rm_bcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 				      true, IWL_MAX_TID_COUNT, queueptr);
 }
 
-/* Send the FW a request to remove the station from it's internal data
+/*
+ * Send the FW a request to remove the station from it's internal data
  * structures, and in addition remove it from the local data structure.
  */
 int iwl_mvm_mld_rm_mcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
@@ -467,7 +471,7 @@ static int iwl_mvm_mld_cfg_sta(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
 		break;
 	}
 
-	switch (sta->deflink.smps_mode) {
+	switch (link_sta->smps_mode) {
 	case IEEE80211_SMPS_AUTOMATIC:
 	case IEEE80211_SMPS_NUM_MODES:
 		WARN_ON(1);
@@ -489,8 +493,7 @@ static int iwl_mvm_mld_cfg_sta(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
 	cmd.tx_ampdu_max_size = cpu_to_le32(agg_size);
 
 	if (sta->wme) {
-		cmd.sp_length =
-			cpu_to_le32(sta->max_sp ? sta->max_sp * 2 : 128);
+		cmd.sp_length = cpu_to_le32(sta->max_sp ? sta->max_sp * 2 : 128);
 		cmd.uapsd_acs = cpu_to_le32(iwl_mvm_get_sta_uapsd_acs(sta));
 	}
 
@@ -507,6 +510,11 @@ static int iwl_mvm_mld_cfg_sta(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
 		if (link_sta->he_cap.he_cap_elem.mac_cap_info[2] &
 		    IEEE80211_HE_MAC_CAP2_ACK_EN)
 			cmd.ack_enabled = cpu_to_le32(1);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+		if (mvm->trans->dbg_cfg.no_ack_en & 0x2)
+			cmd.ack_enabled = cpu_to_le32(0);
+#endif
 	}
 
 	return iwl_mvm_mld_send_sta_cmd(mvm, &cmd);
@@ -697,6 +705,8 @@ int iwl_mvm_mld_add_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	/* at this stage sta link pointers are already allocated */
 	ret = iwl_mvm_mld_update_sta(mvm, vif, sta);
+	if (ret)
+		goto err;
 
 	for_each_sta_active_link(vif, sta, link_sta, link_id) {
 		struct ieee80211_bss_conf *link_conf =
@@ -718,6 +728,7 @@ int iwl_mvm_mld_add_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		if (vif->type == NL80211_IFTYPE_STATION)
 			iwl_mvm_mld_set_ap_sta_id(sta, mvm_vif->link[link_id],
 						  mvm_link_sta);
+
 	}
 
 	return 0;
@@ -1104,15 +1115,26 @@ int iwl_mvm_mld_update_sta_links(struct iwl_mvm *mvm,
 			link_sta_dereference_protected(sta, link_id);
 		mvm_vif_link = mvm_vif->link[link_id];
 
-		if (WARN_ON(!mvm_vif_link || !link_conf || !link_sta ||
-			    mvm_sta->link[link_id])) {
+		if (WARN_ON(!mvm_vif_link || !link_conf || !link_sta)) {
 			ret = -EINVAL;
 			goto err;
 		}
 
-		ret = iwl_mvm_mld_alloc_sta_link(mvm, vif, sta, link_id);
-		if (WARN_ON(ret))
-			goto err;
+		if (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
+			if (WARN_ON(!mvm_sta->link[link_id])) {
+				ret = -EINVAL;
+				goto err;
+			}
+		} else {
+			if (WARN_ON(mvm_sta->link[link_id])) {
+				ret = -EINVAL;
+				goto err;
+			}
+			ret = iwl_mvm_mld_alloc_sta_link(mvm, vif, sta,
+							 link_id);
+			if (WARN_ON(ret))
+				goto err;
+		}
 
 		link_sta->agg.max_rc_amsdu_len = 1;
 		ieee80211_sta_recalc_aggregates(sta);

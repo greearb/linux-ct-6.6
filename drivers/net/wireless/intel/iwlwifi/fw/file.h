@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2008-2014, 2018-2021 Intel Corporation
+ * Copyright (C) 2008-2014, 2018-2023 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -89,10 +89,12 @@ enum iwl_ucode_tlv_type {
 	IWL_UCODE_TLV_FW_GSCAN_CAPA	= 50,
 	IWL_UCODE_TLV_FW_MEM_SEG	= 51,
 	IWL_UCODE_TLV_IML		= 52,
+	IWL_UCODE_TLV_RES_53		= 53,
 	IWL_UCODE_TLV_UMAC_DEBUG_ADDRS	= 54,
 	IWL_UCODE_TLV_LMAC_DEBUG_ADDRS	= 55,
 	IWL_UCODE_TLV_FW_RECOVERY_INFO	= 57,
 	IWL_UCODE_TLV_HW_TYPE			= 58,
+	IWL_UCODE_TLV_RES_59			= 59,
 	IWL_UCODE_TLV_FW_FSEQ_VERSION		= 60,
 	IWL_UCODE_TLV_PHY_INTEGRATION_VERSION	= 61,
 
@@ -124,6 +126,7 @@ struct iwl_ucode_tlv {
 	u8 data[];
 };
 
+#define IWL_TLV_FW_DBG_MAGIC		0xb5221389
 #define IWL_TLV_UCODE_MAGIC		0x0a4c5749
 #define FW_VER_HUMAN_READABLE_SZ	64
 
@@ -223,6 +226,8 @@ typedef unsigned int __bitwise iwl_ucode_tlv_api_t;
  *	deprecated.
  * @IWL_UCODE_TLV_API_ADAPTIVE_DWELL_V2: This ucode supports version 8
  *	of scan request: SCAN_REQUEST_CMD_UMAC_API_S_VER_8
+ * @IWL_UCODE_TLV_API_NAN_NOTIF_V2: This ucode supports version 2 of
+ *      the NAN discovery notification.
  * @IWL_UCODE_TLV_API_FRAG_EBS: This ucode supports fragmented EBS
  * @IWL_UCODE_TLV_API_REDUCE_TX_POWER: This ucode supports v5 of
  *	the REDUCE_TX_POWER_CMD.
@@ -265,6 +270,7 @@ enum iwl_ucode_tlv_api {
 	IWL_UCODE_TLV_API_QUOTA_LOW_LATENCY	= (__force iwl_ucode_tlv_api_t)38,
 	IWL_UCODE_TLV_API_DEPRECATE_TTAK	= (__force iwl_ucode_tlv_api_t)41,
 	IWL_UCODE_TLV_API_ADAPTIVE_DWELL_V2	= (__force iwl_ucode_tlv_api_t)42,
+	IWL_UCODE_TLV_API_NAN_NOTIF_V2		= (__force iwl_ucode_tlv_api_t)43,
 	IWL_UCODE_TLV_API_FRAG_EBS		= (__force iwl_ucode_tlv_api_t)44,
 	IWL_UCODE_TLV_API_REDUCE_TX_POWER	= (__force iwl_ucode_tlv_api_t)45,
 	IWL_UCODE_TLV_API_SHORT_BEACON_NOTIF	= (__force iwl_ucode_tlv_api_t)46,
@@ -281,12 +287,16 @@ enum iwl_ucode_tlv_api {
 	IWL_UCODE_TLV_API_SCAN_EXT_CHAN_VER	= (__force iwl_ucode_tlv_api_t)58,
 	IWL_UCODE_TLV_API_BAND_IN_RX_DATA	= (__force iwl_ucode_tlv_api_t)59,
 
-
-#ifdef __CHECKER__
-	/* sparse says it cannot increment the previous enum member */
-#define NUM_IWL_UCODE_TLV_API 128
-#else
 	NUM_IWL_UCODE_TLV_API
+/*
+ * This construction make both sparse (which cannot increment the previous
+ * member due to its bitwise type) and kernel-doc (which doesn't understand
+ * the ifdef/else properly) work.
+ */
+#ifdef __CHECKER__
+#define __CHECKER_NUM_IWL_UCODE_TLV_API	128
+		= (__force iwl_ucode_tlv_api_t)__CHECKER_NUM_IWL_UCODE_TLV_API,
+#define NUM_IWL_UCODE_TLV_API __CHECKER_NUM_IWL_UCODE_TLV_API
 #endif
 };
 
@@ -323,7 +333,9 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  *	is supported.
  * @IWL_UCODE_TLV_CAPA_BT_COEX_RRC: supports BT Coex RRC
  * @IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT: supports gscan (no longer used)
- * @IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG: supports fragmented PNVM image
+ * @IWL_UCODE_TLV_CAPA_NAN_SUPPORT: supports NAN
+ * @IWL_UCODE_TLV_CAPA_UMAC_UPLOAD: supports upload mode in umac (1=supported,
+ *	0=no support)
  * @IWL_UCODE_TLV_CAPA_SOC_LATENCY_SUPPORT: the firmware supports setting
  *	stabilization latency for SoCs.
  * @IWL_UCODE_TLV_CAPA_STA_PM_NOTIF: firmware will send STA PM notification
@@ -354,6 +366,8 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  * @IWL_UCODE_TLV_CAPA_EXTEND_SHARED_MEM_CFG: support getting more shared
  *	memory addresses from the firmware.
  * @IWL_UCODE_TLV_CAPA_LQM_SUPPORT: supports Link Quality Measurement
+ * @IWL_UCODE_TLV_CAPA_LMAC_UPLOAD: supports upload mode in lmac (1=supported,
+ *	0=no support)
  * @IWL_UCODE_TLV_CAPA_TX_POWER_ACK: reduced TX power API has larger
  *	command size (command version 4) that supports toggling ACK TX
  *	power reduction.
@@ -362,6 +376,9 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  *	capability.
  * @IWL_UCODE_TLV_CAPA_CSI_REPORTING: firmware is capable of being configured
  *	to report the CSI information with (certain) RX frames
+ * @IWL_UCODE_TLV_CAPA_CSI_REPORTING_V2: firmware is capable of being configured
+ *	to report the CSI information with (certain) RX frames, with the new CSI
+ *	filter API
  * @IWL_UCODE_TLV_CAPA_FTM_CALIBRATED: has FTM calibrated and thus supports both
  *	initiator and responder
  * @IWL_UCODE_TLV_CAPA_MLME_OFFLOAD: supports MLME offload
@@ -370,6 +387,10 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  *	reset flow
  * @IWL_UCODE_TLV_CAPA_PASSIVE_6GHZ_SCAN: Support for passive scan on 6GHz PSC
  *      channels even when these are not enabled.
+ * @IWL_UCODE_TLV_CAPA_RFI_DDR_SUPPORT: Support RF Interference mitigation for
+ *	DDR memory
+ * @IWL_UCODE_TLV_CAPA_RFI_DLVR_SUPPORT: Support RF Interference mitigation for
+ *	DLVR (Digital Linear Voltage Regulator).
  * @IWL_UCODE_TLV_CAPA_DUMP_COMPLETE_SUPPORT: Support for indicating dump collection
  *	complete to FW.
  *
@@ -400,6 +421,9 @@ enum iwl_ucode_tlv_capa {
 
 	/* set 1 */
 	IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG		= (__force iwl_ucode_tlv_capa_t)32,
+	//place for paging
+	IWL_UCODE_TLV_CAPA_NAN_SUPPORT			= (__force iwl_ucode_tlv_capa_t)34,
+	IWL_UCODE_TLV_CAPA_UMAC_UPLOAD			= (__force iwl_ucode_tlv_capa_t)35,
 	IWL_UCODE_TLV_CAPA_SOC_LATENCY_SUPPORT		= (__force iwl_ucode_tlv_capa_t)37,
 	IWL_UCODE_TLV_CAPA_STA_PM_NOTIF			= (__force iwl_ucode_tlv_capa_t)38,
 	IWL_UCODE_TLV_CAPA_BINDING_CDB_SUPPORT		= (__force iwl_ucode_tlv_capa_t)39,
@@ -422,7 +446,7 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_HIDDEN_6GHZ_SCAN		= (__force iwl_ucode_tlv_capa_t)59,
 	IWL_UCODE_TLV_CAPA_BROADCAST_TWT		= (__force iwl_ucode_tlv_capa_t)60,
 	IWL_UCODE_TLV_CAPA_COEX_HIGH_PRIO		= (__force iwl_ucode_tlv_capa_t)61,
-	IWL_UCODE_TLV_CAPA_RFIM_SUPPORT			= (__force iwl_ucode_tlv_capa_t)62,
+	IWL_UCODE_TLV_CAPA_RFI_DDR_SUPPORT		= (__force iwl_ucode_tlv_capa_t)62,
 	IWL_UCODE_TLV_CAPA_BAID_ML_SUPPORT		= (__force iwl_ucode_tlv_capa_t)63,
 
 	/* set 2 */
@@ -438,6 +462,7 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_TEMP_THS_REPORT_SUPPORT	= (__force iwl_ucode_tlv_capa_t)75,
 	IWL_UCODE_TLV_CAPA_CTDP_SUPPORT			= (__force iwl_ucode_tlv_capa_t)76,
 	IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED		= (__force iwl_ucode_tlv_capa_t)77,
+	IWL_UCODE_TLV_CAPA_LMAC_UPLOAD			= (__force iwl_ucode_tlv_capa_t)79,
 	IWL_UCODE_TLV_CAPA_EXTEND_SHARED_MEM_CFG	= (__force iwl_ucode_tlv_capa_t)80,
 	IWL_UCODE_TLV_CAPA_LQM_SUPPORT			= (__force iwl_ucode_tlv_capa_t)81,
 	IWL_UCODE_TLV_CAPA_TX_POWER_ACK			= (__force iwl_ucode_tlv_capa_t)84,
@@ -445,6 +470,7 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_LED_CMD_SUPPORT		= (__force iwl_ucode_tlv_capa_t)88,
 	IWL_UCODE_TLV_CAPA_MCC_UPDATE_11AX_SUPPORT	= (__force iwl_ucode_tlv_capa_t)89,
 	IWL_UCODE_TLV_CAPA_CSI_REPORTING		= (__force iwl_ucode_tlv_capa_t)90,
+	IWL_UCODE_TLV_CAPA_CSI_REPORTING_V2		= (__force iwl_ucode_tlv_capa_t)91,
 	IWL_UCODE_TLV_CAPA_DBG_SUSPEND_RESUME_CMD_SUPP	= (__force iwl_ucode_tlv_capa_t)92,
 	IWL_UCODE_TLV_CAPA_DBG_BUF_ALLOC_CMD_SUPP	= (__force iwl_ucode_tlv_capa_t)93,
 
@@ -467,13 +493,20 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_PPAG_CHINA_BIOS_SUPPORT	= (__force iwl_ucode_tlv_capa_t)112,
 	IWL_UCODE_TLV_CAPA_OFFLOAD_BTM_SUPPORT		= (__force iwl_ucode_tlv_capa_t)113,
 	IWL_UCODE_TLV_CAPA_STA_EXP_MFP_SUPPORT		= (__force iwl_ucode_tlv_capa_t)114,
+	IWL_UCODE_TLV_CAPA_RFI_DLVR_SUPPORT		= (__force iwl_ucode_tlv_capa_t)115,
 	IWL_UCODE_TLV_CAPA_SNIFF_VALIDATE_SUPPORT	= (__force iwl_ucode_tlv_capa_t)116,
+	IWL_UCODE_TLV_CAPA_CHINA_22_REG_SUPPORT		= (__force iwl_ucode_tlv_capa_t)117,
 
-#ifdef __CHECKER__
-	/* sparse says it cannot increment the previous enum member */
-#define NUM_IWL_UCODE_TLV_CAPA 128
-#else
 	NUM_IWL_UCODE_TLV_CAPA
+/*
+ * This construction make both sparse (which cannot increment the previous
+ * member due to its bitwise type) and kernel-doc (which doesn't understand
+ * the ifdef/else properly) work.
+ */
+#ifdef __CHECKER__
+#define __CHECKER_NUM_IWL_UCODE_TLV_CAPA	128
+		= (__force iwl_ucode_tlv_capa_t)__CHECKER_NUM_IWL_UCODE_TLV_CAPA,
+#define NUM_IWL_UCODE_TLV_CAPA __CHECKER_NUM_IWL_UCODE_TLV_CAPA
 #endif
 };
 
@@ -677,6 +710,7 @@ enum iwl_fw_dbg_trigger_flags {
  * @IWL_FW_DBG_CONF_VIF_P2P_CLIENT: P2P Client mode
  * @IWL_FW_DBG_CONF_VIF_P2P_GO: P2P GO mode
  * @IWL_FW_DBG_CONF_VIF_P2P_DEVICE: P2P device
+ * @IWL_FW_DBG_CONF_VIF_NAN: NAN device
  */
 enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_ANY = NL80211_IFTYPE_UNSPECIFIED,
@@ -686,6 +720,7 @@ enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_P2P_CLIENT = NL80211_IFTYPE_P2P_CLIENT,
 	IWL_FW_DBG_CONF_VIF_P2P_GO = NL80211_IFTYPE_P2P_GO,
 	IWL_FW_DBG_CONF_VIF_P2P_DEVICE = NL80211_IFTYPE_P2P_DEVICE,
+	IWL_FW_DBG_CONF_VIF_NAN = NL80211_IFTYPE_NAN,
 };
 
 /**

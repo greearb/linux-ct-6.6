@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018-2021 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2021, 2023 Intel Corporation
  * Copyright (C) 2013-2014 Intel Mobile Communications GmbH
  * Copyright (C) 2015 Intel Deutschland GmbH
  */
@@ -11,13 +11,19 @@
 #include <linux/debugfs.h>
 #include "iwl-dbg-tlv.h"
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#include "fw/testmode.h"
+#endif
+
 struct iwl_op_mode;
 struct iwl_trans;
 struct sk_buff;
 struct iwl_device_cmd;
+struct iwl_host_cmd;
 struct iwl_rx_cmd_buffer;
 struct iwl_fw;
 struct iwl_cfg;
+struct iwl_tm_data;
 
 /**
  * DOC: Operational mode - what is it ?
@@ -43,6 +49,26 @@ struct iwl_cfg;
  *	4) The op_mode is governed by mac80211
  *	5) The driver layer stops the op_mode
  */
+
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+/**
+ * struct iwl_test_ops: callback to the op mode
+ * @send_hcmd: Handler that sends host cmd in the specific op_mode. If this
+ *	handler is not registered then sending host cmd will not be supported.
+ * @cmd_exec: Handler that is used to execute user's test-mode commands.
+ *	It is optional. If this handler is not given, the default handler will
+ *	execute.
+ *
+ * The structure defines the callbacks that the op_mode should handle,
+ * inorder to handle logic that is out of the scope of iwl_test.
+ */
+struct iwl_test_ops {
+	int (*send_hcmd)(void *op_mode, struct iwl_host_cmd *host_cmd);
+	int (*cmd_exec)(struct iwl_testmode *testmode, u32 cmd,
+			struct iwl_tm_data *data_in,
+			struct iwl_tm_data *data_out, bool *cmd_supported);
+};
+#endif
 
 /**
  * struct iwl_op_mode_ops - op_mode specific operations
@@ -109,6 +135,12 @@ struct iwl_op_mode_ops {
 	void (*time_point)(struct iwl_op_mode *op_mode,
 			   enum iwl_fw_ini_time_point tp_id,
 			   union iwl_dbg_tlv_tp_data *tp_data);
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	/**
+	 * @test_ops: testmode methods
+	 */
+	struct iwl_test_ops test_ops;
+#endif
 };
 
 int iwl_opmode_register(const char *name, const struct iwl_op_mode_ops *ops);

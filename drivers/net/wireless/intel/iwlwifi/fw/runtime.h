@@ -18,7 +18,6 @@
 struct iwl_fw_runtime_ops {
 	void (*dump_start)(void *ctx);
 	void (*dump_end)(void *ctx);
-	bool (*fw_running)(void *ctx);
 	int (*send_hcmd)(void *ctx, struct iwl_host_cmd *host_cmd);
 	bool (*d3_debug_enable)(void *ctx);
 };
@@ -147,15 +146,15 @@ struct iwl_fw_runtime {
 		} fw_ver;
 	} dump;
 	struct {
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 		struct delayed_work wk;
 		u32 delay;
 #endif
 		u64 seq;
 	} timestamp;
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	bool tpc_enabled;
-#endif /* CONFIG_IWLWIFI_DEBUGFS */
+#endif /* CPTCFG_IWLWIFI_DEBUGFS */
 #ifdef CONFIG_ACPI
 	struct iwl_sar_profile sar_profiles[ACPI_SAR_PROFILE_NUM];
 	u8 sar_chain_a_profile;

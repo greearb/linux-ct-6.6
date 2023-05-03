@@ -21,10 +21,14 @@
 #include "iwl-phy-db.h"
 #include "iwl-modparams.h"
 #include "iwl-nvm-parse.h"
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#include "iwl-dnt-cfg.h"
+#include "fw/testmode.h"
+#endif
 #include "time-sync.h"
 
-#define MVM_UCODE_ALIVE_TIMEOUT	(HZ)
-#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ)
+#define MVM_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 #define IWL_TAS_US_MCC 0x5553
 #define IWL_TAS_CANADA_MCC 0x4341
@@ -247,6 +251,10 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	alive_data->scd_base_addr = le32_to_cpu(lmac1->dbg_ptrs.scd_base_ptr);
 	alive_data->valid = status == IWL_ALIVE_STATUS_OK;
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_tm_set_fw_ver(mvm->trans, le32_to_cpu(lmac1->ucode_major),
+			  le32_to_cpu(lmac1->ucode_minor));
+#endif
 	IWL_DEBUG_FW(mvm,
 		     "Alive ucode status 0x%04x revision 0x%01X 0x%01X\n",
 		     status, lmac1->ver_type, lmac1->ver_subtype);
@@ -463,7 +471,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 		BIT(IWL_MAX_TID_COUNT + 2);
 
 	set_bit(IWL_MVM_STATUS_FIRMWARE_RUNNING, &mvm->status);
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	iwl_fw_set_dbg_rec_on(&mvm->fwrt);
 #endif
 
@@ -484,6 +492,20 @@ static void iwl_mvm_phy_filter_init(struct iwl_mvm *mvm,
 #ifdef CONFIG_ACPI
 	*phy_filters = mvm->phy_filters;
 #endif /* CONFIG_ACPI */
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (IWL_MVM_PHY_FILTER_CHAIN_A)
+		phy_filters->filter_cfg_chains[0] =
+			cpu_to_le32(IWL_MVM_PHY_FILTER_CHAIN_A);
+	if (IWL_MVM_PHY_FILTER_CHAIN_B)
+		phy_filters->filter_cfg_chains[1] =
+			cpu_to_le32(IWL_MVM_PHY_FILTER_CHAIN_B);
+	if (IWL_MVM_PHY_FILTER_CHAIN_C)
+		phy_filters->filter_cfg_chains[2] =
+			cpu_to_le32(IWL_MVM_PHY_FILTER_CHAIN_C);
+	if (IWL_MVM_PHY_FILTER_CHAIN_D)
+		phy_filters->filter_cfg_chains[3] =
+			cpu_to_le32(IWL_MVM_PHY_FILTER_CHAIN_D);
+#endif
 }
 
 #if defined(CONFIG_ACPI) && defined(CONFIG_EFI)
@@ -535,9 +557,19 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 	enum iwl_ucode_type ucode_type = mvm->fwrt.cur_fw_img;
 	u8 cmd_ver;
 	size_t cmd_size;
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	u32 override_mask, flow_override, flow_src;
+	u32 event_override, event_src;
+	const struct iwl_tlv_calib_ctrl *default_calib =
+		&mvm->fw->default_calib[ucode_type];
+#endif
 
 	if (iwl_mvm_has_unified_ucode(mvm) &&
-	    !mvm->trans->cfg->tx_with_siso_diversity)
+	    !mvm->trans->cfg->tx_with_siso_diversity
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	    && !mvm->trans->dbg_cfg.MVM_CALIB_OVERRIDE_CONTROL
+#endif
+	   )
 		return 0;
 
 	if (mvm->trans->cfg->tx_with_siso_diversity) {
@@ -566,6 +598,72 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 	if (cmd_ver >= 3)
 		iwl_mvm_phy_filter_init(mvm, &phy_cfg_cmd.phy_specific_cfg);
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	override_mask = mvm->trans->dbg_cfg.MVM_CALIB_OVERRIDE_CONTROL;
+	if (override_mask) {
+		IWL_DEBUG_INFO(mvm,
+			       "calib settings overriden by user, control=0x%x\n",
+			       override_mask);
+
+		switch (ucode_type) {
+		case IWL_UCODE_INIT:
+			flow_override = mvm->trans->dbg_cfg.MVM_CALIB_INIT_FLOW;
+			event_override =
+				mvm->trans->dbg_cfg.MVM_CALIB_INIT_EVENT;
+			IWL_DEBUG_CALIB(mvm,
+					"INIT: flow_override %x, event_override %x\n",
+					flow_override, event_override);
+			break;
+		case IWL_UCODE_REGULAR:
+			flow_override = mvm->trans->dbg_cfg.MVM_CALIB_D0_FLOW;
+			event_override = mvm->trans->dbg_cfg.MVM_CALIB_D0_EVENT;
+			IWL_DEBUG_CALIB(mvm,
+					"REGULAR: flow_override %x, event_override %x\n",
+					flow_override, event_override);
+			break;
+		case IWL_UCODE_WOWLAN:
+			flow_override = mvm->trans->dbg_cfg.MVM_CALIB_D3_FLOW;
+			event_override = mvm->trans->dbg_cfg.MVM_CALIB_D3_EVENT;
+			IWL_DEBUG_CALIB(mvm,
+					"WOWLAN: flow_override %x, event_override %x\n",
+					flow_override, event_override);
+			break;
+		default:
+			IWL_ERR(mvm, "ERROR: calib case isn't valid\n");
+			flow_override = 0;
+			event_override = 0;
+			break;
+		}
+
+		IWL_DEBUG_CALIB(mvm, "override_mask %x\n", override_mask);
+
+		/* find the new calib setting for the flow calibrations */
+		flow_src = le32_to_cpu(default_calib->flow_trigger);
+		IWL_DEBUG_CALIB(mvm, "flow_src %x\n", flow_src);
+
+		flow_override &= override_mask;
+		flow_src &= ~override_mask;
+		flow_override |= flow_src;
+
+		phy_cfg_cmd.calib_control.flow_trigger =
+			cpu_to_le32(flow_override);
+		IWL_DEBUG_CALIB(mvm, "new flow calib setting = %x\n",
+				flow_override);
+
+		/* find the new calib setting for the event calibrations */
+		event_src = le32_to_cpu(default_calib->event_trigger);
+		IWL_DEBUG_CALIB(mvm, "event_src %x\n", event_src);
+
+		event_override &= override_mask;
+		event_src &= ~override_mask;
+		event_override |= event_src;
+
+		phy_cfg_cmd.calib_control.event_trigger =
+			cpu_to_le32(event_override);
+		IWL_DEBUG_CALIB(mvm, "new event calib setting = %x\n",
+				event_override);
+	}
+#endif
 	IWL_DEBUG_INFO(mvm, "Sending Phy CFG command: 0x%x\n",
 		       phy_cfg_cmd.phy_cfg);
 	cmd_size = (cmd_ver == 3) ? sizeof(struct iwl_phy_cfg_cmd_v3) :
@@ -583,6 +681,7 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 	static const u16 init_complete[] = {
 		INIT_COMPLETE_NOTIF,
 	};
+	u32 sb_cfg;
 	int ret;
 
 	if (mvm->trans->cfg->tx_with_siso_diversity)
@@ -591,6 +690,14 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 	lockdep_assert_held(&mvm->mutex);
 
 	mvm->rfkill_safe_init_done = false;
+
+	if (mvm->trans->trans_cfg->device_family == IWL_DEVICE_FAMILY_AX210) {
+		sb_cfg = iwl_read_umac_prph(mvm->trans, SB_MODIFY_CFG_FLAG);
+		/* if needed, we'll reset this on our way out later */
+		mvm->pldr_sync = !(sb_cfg & SB_CFG_RESIDES_IN_OTP_MASK);
+		if (mvm->pldr_sync && iwl_mei_pldr_req())
+			return -EBUSY;
+	}
 
 	iwl_init_notification_wait(&mvm->notif_wait,
 				   &init_wait,
@@ -604,7 +711,14 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 	/* Will also start the device */
 	ret = iwl_mvm_load_ucode_wait_alive(mvm, IWL_UCODE_REGULAR);
 	if (ret) {
-		IWL_ERR(mvm, "run-mvm-ucode: Failed to start RT ucode: %d\n", ret);
+		IWL_ERR(mvm, "Failed to start RT ucode: %d\n", ret);
+
+		/* if we needed reset then fail here, but notify and remove */
+		if (mvm->pldr_sync) {
+			iwl_mei_alive_notif(false);
+			iwl_trans_pcie_remove(mvm->trans, true);
+		}
+
 		goto error;
 	}
 	iwl_dbg_tlv_time_point(&mvm->fwrt, IWL_FW_INI_TIME_POINT_AFTER_ALIVE,
@@ -667,7 +781,8 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 
 	/* Read the NVM only at driver load time, no need to do this twice */
 	if (!IWL_MVM_PARSE_NVM && !mvm->nvm_data) {
-		mvm->nvm_data = iwl_get_nvm(mvm->trans, mvm->fw);
+		mvm->nvm_data = iwl_get_nvm(mvm->trans, mvm->fw,
+					    mvm->set_tx_ant, mvm->set_rx_ant);
 		if (IS_ERR(mvm->nvm_data)) {
 			ret = PTR_ERR(mvm->nvm_data);
 			mvm->nvm_data = NULL;
@@ -678,6 +793,7 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 
 	mvm->rfkill_safe_init_done = true;
 
+	iwl_rfi_send_config_cmd(mvm, NULL);
 	return 0;
 
 error:
@@ -716,6 +832,9 @@ int iwl_run_init_mvm_ucode(struct iwl_mvm *mvm)
 		IWL_ERR(mvm, "Failed to start INIT ucode: %d\n", ret);
 		goto remove_notif;
 	}
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_dnt_start(mvm->trans);
+#endif
 
 	if (mvm->trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_8000) {
 		ret = iwl_mvm_send_bt_init_conf(mvm);
@@ -823,6 +942,7 @@ static int iwl_mvm_config_ltr(struct iwl_mvm *mvm)
 }
 
 #ifdef CONFIG_ACPI
+
 int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 {
 	u32 cmd_id = REDUCE_TX_POWER_CMD;
@@ -1042,6 +1162,16 @@ int iwl_mvm_ppag_send_cmd(struct iwl_mvm *mvm)
 static int iwl_mvm_ppag_init(struct iwl_mvm *mvm)
 {
 	/* no need to read the table, done in INIT stage */
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.ppag_allowed &&
+	    dmi_match(DMI_SYS_VENDOR, mvm->trans->dbg_cfg.ppag_allowed)) {
+		IWL_DEBUG_RADIO(mvm,
+				"System vendor matches dbg_cfg.ppag_allowed %s\n",
+				mvm->trans->dbg_cfg.ppag_allowed);
+		return iwl_mvm_ppag_send_cmd(mvm);
+	}
+#endif
+
 	if (!(iwl_acpi_is_ppag_approved(&mvm->fwrt)))
 		return 0;
 
@@ -1151,6 +1281,14 @@ static void iwl_mvm_tas_init(struct iwl_mvm *mvm)
 	if (ret == 0)
 		return;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.tas_allowed &&
+	    dmi_match(DMI_SYS_VENDOR, mvm->trans->dbg_cfg.tas_allowed)) {
+		IWL_DEBUG_RADIO(mvm,
+				"System vendor matches dbg_cfg.tas_allowed %s\n",
+				mvm->trans->dbg_cfg.tas_allowed);
+	} else
+#endif
 	if (!iwl_mvm_is_vendor_in_approved_list()) {
 		IWL_DEBUG_RADIO(mvm,
 				"System vendor '%s' is not in the approved list, disabling TAS in US and Canada.\n",
@@ -1181,28 +1319,57 @@ static void iwl_mvm_tas_init(struct iwl_mvm *mvm)
 		IWL_DEBUG_RADIO(mvm, "failed to send TAS_CONFIG (%d)\n", ret);
 }
 
-static u8 iwl_mvm_eval_dsm_rfi(struct iwl_mvm *mvm)
+u8 iwl_mvm_eval_dsm_rfi_dlvr(struct iwl_mvm *mvm)
 {
 	u8 value;
-	int ret = iwl_acpi_get_dsm_u8(mvm->fwrt.dev, 0, DSM_RFI_FUNC_ENABLE,
-				      &iwl_rfi_guid, &value);
 
+	int ret = iwl_acpi_get_dsm_u8(mvm->fwrt.dev, 0,
+				      DSM_FUNC_RFI_DLVR_CONFIG, &iwl_guid,
+				      &value);
 	if (ret < 0) {
-		IWL_DEBUG_RADIO(mvm, "Failed to get DSM RFI, ret=%d\n", ret);
+		IWL_DEBUG_RADIO(mvm, "Failed to get DSM RFI DLVR, ret=%d\n",
+				ret);
 
-	} else if (value >= DSM_VALUE_RFI_MAX) {
-		IWL_DEBUG_RADIO(mvm, "DSM RFI got invalid value, ret=%d\n",
+	} else if (value >= DSM_VALUE_RFI_DLVR_MAX) {
+		IWL_DEBUG_RADIO(mvm,
+				"DSM RFI DLVR got invalid value, value=%d\n",
 				value);
 
-	} else if (value == DSM_VALUE_RFI_ENABLE) {
-		IWL_DEBUG_RADIO(mvm, "DSM RFI is evaluated to enable\n");
-		return DSM_VALUE_RFI_ENABLE;
+	} else if (value == DSM_VALUE_RFI_DLVR_ENABLE) {
+		IWL_DEBUG_RADIO(mvm, "DSM RFI DLVR is evaluated to enable\n");
+		return DSM_VALUE_RFI_DLVR_ENABLE;
 	}
 
-	IWL_DEBUG_RADIO(mvm, "DSM RFI is disabled\n");
+	IWL_DEBUG_RADIO(mvm, "DSM RFI DLVR is disabled\n");
 
 	/* default behaviour is disabled */
-	return DSM_VALUE_RFI_DISABLE;
+	return DSM_VALUE_RFI_DLVR_DISABLE;
+}
+
+u8 iwl_mvm_eval_dsm_rfi_ddr(struct iwl_mvm *mvm)
+{
+	u8 value;
+
+	int ret = iwl_acpi_get_dsm_u8(mvm->fwrt.dev, 0, DSM_RFI_DDR_FUNC_ENABLE,
+				      &iwl_rfi_guid, &value);
+	if (ret < 0) {
+		IWL_DEBUG_RADIO(mvm, "Failed to get DSM RFI DDR, ret=%d\n",
+				ret);
+
+	} else if (value >= DSM_VALUE_RFI_DDR_MAX) {
+		IWL_DEBUG_RADIO(mvm,
+				"DSM RFI DDR got invalid value, value=%d\n",
+				value);
+
+	} else if (value == DSM_VALUE_RFI_DDR_ENABLE) {
+		IWL_DEBUG_RADIO(mvm, "DSM RFI DDR is evaluated to enable\n");
+		return DSM_VALUE_RFI_DDR_ENABLE;
+	}
+
+	IWL_DEBUG_RADIO(mvm, "DSM RFI DDR is disabled\n");
+
+	/* default behaviour is disabled */
+	return DSM_VALUE_RFI_DDR_DISABLE;
 }
 
 static void iwl_mvm_lari_cfg(struct iwl_mvm *mvm)
@@ -1354,13 +1521,12 @@ void iwl_mvm_get_acpi_tables(struct iwl_mvm *mvm)
 }
 #else /* CONFIG_ACPI */
 
-inline int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm,
-				      int prof_a, int prof_b)
+int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 {
 	return 1;
 }
 
-inline int iwl_mvm_get_sar_geo_profile(struct iwl_mvm *mvm)
+int iwl_mvm_get_sar_geo_profile(struct iwl_mvm *mvm)
 {
 	return -ENOENT;
 }
@@ -1388,14 +1554,14 @@ static void iwl_mvm_lari_cfg(struct iwl_mvm *mvm)
 {
 }
 
-bool iwl_mvm_is_vendor_in_approved_list(void)
+u8 iwl_mvm_eval_dsm_rfi_ddr(struct iwl_mvm *mvm)
 {
-	return false;
+	return DSM_VALUE_RFI_DDR_DISABLE;
 }
 
-static u8 iwl_mvm_eval_dsm_rfi(struct iwl_mvm *mvm)
+u8 iwl_mvm_eval_dsm_rfi_dlvr(struct iwl_mvm *mvm)
 {
-	return DSM_VALUE_RFI_DISABLE;
+	return DSM_VALUE_RFI_DLVR_DISABLE;
 }
 
 void iwl_mvm_get_acpi_tables(struct iwl_mvm *mvm)
@@ -1457,6 +1623,16 @@ void iwl_mvm_send_recovery_cmd(struct iwl_mvm *mvm, u32 flags)
 
 static int iwl_mvm_sar_init(struct iwl_mvm *mvm)
 {
+#if defined(CPTCFG_IWLMVM_VENDOR_CMDS) && defined(CONFIG_ACPI)
+	/*
+	 * if no profile was chosen by the user yet, choose profile 1 (WRDS) as
+	 * default for both chains
+	 */
+	if (mvm->fwrt.sar_chain_a_profile && mvm->fwrt.sar_chain_b_profile)
+		return iwl_mvm_sar_select_profile(mvm,
+						mvm->fwrt.sar_chain_a_profile,
+						mvm->fwrt.sar_chain_b_profile);
+#endif
 	return iwl_mvm_sar_select_profile(mvm, 1, 1);
 }
 
@@ -1496,13 +1672,35 @@ static int iwl_mvm_load_rt_fw(struct iwl_mvm *mvm)
 	return iwl_init_paging(&mvm->fwrt, mvm->fwrt.cur_fw_img);
 }
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static void iwl_mvm_send_system_features_control(struct iwl_mvm *mvm)
+{
+	struct iwl_dbg_cfg *dbg_cfg = &mvm->trans->dbg_cfg;
+	struct iwl_system_features_control_cmd cmd = {
+		.features[0] = cpu_to_le32(dbg_cfg->system_features_control_1),
+		.features[1] = cpu_to_le32(dbg_cfg->system_features_control_2),
+		.features[2] = cpu_to_le32(dbg_cfg->system_features_control_3),
+		.features[3] = cpu_to_le32(dbg_cfg->system_features_control_4),
+	};
+
+	if (!dbg_cfg->system_features_control_1 &&
+	    !dbg_cfg->system_features_control_2 &&
+	    !dbg_cfg->system_features_control_3 &&
+	    !dbg_cfg->system_features_control_4)
+		return;
+
+	WARN_ON(iwl_mvm_send_cmd_pdu(mvm, WIDE_ID(SYSTEM_GROUP,
+						  SYSTEM_FEATURES_CONTROL_CMD),
+				     0, sizeof(cmd), &cmd));
+}
+#endif
+
 int iwl_mvm_up(struct iwl_mvm *mvm)
 {
 	int ret, i;
 	struct ieee80211_channel *chan;
 	struct cfg80211_chan_def chandef;
 	struct ieee80211_supported_band *sband = NULL;
-	u32 sb_cfg;
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -1510,14 +1708,9 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	if (ret)
 		return ret;
 
-	sb_cfg = iwl_read_umac_prph(mvm->trans, SB_MODIFY_CFG_FLAG);
-	mvm->pldr_sync = !(sb_cfg & SB_CFG_RESIDES_IN_OTP_MASK);
-	if (mvm->pldr_sync && iwl_mei_pldr_req())
-		return -EBUSY;
-
 	ret = iwl_mvm_load_rt_fw(mvm);
 	if (ret) {
-		IWL_ERR(mvm, "mvm-up: Failed to start RT ucode: %d\n", ret);
+		IWL_ERR(mvm, "Failed to start RT ucode: %d\n", ret);
 		if (ret != -ERFKILL && !mvm->pldr_sync)
 			iwl_fw_dbg_error_collect(&mvm->fwrt,
 						 FW_DBG_TRIGGER_DRIVER);
@@ -1527,11 +1720,16 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	/* FW loaded successfully */
 	mvm->pldr_sync = false;
 
+	iwl_fw_disable_dbg_asserts(&mvm->fwrt);
 	iwl_get_shared_mem_conf(&mvm->fwrt);
 
 	ret = iwl_mvm_sf_update(mvm, NULL, false);
 	if (ret)
 		IWL_ERR(mvm, "Failed to initialize Smart Fifo\n");
+
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_dnt_start(mvm->trans);
+#endif
 
 	if (!iwl_trans_dbg_ini_valid(mvm->trans)) {
 		mvm->fwrt.dump.conf = FW_DBG_INVALID;
@@ -1696,6 +1894,37 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 			goto error;
 	}
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	/* set_mode must be IWL_TX_POWER_MODE_SET_DEVICE if this was
+	 * ever initialized.
+	 */
+	if (le32_to_cpu(mvm->txp_cmd.common.set_mode) ==
+	    IWL_TX_POWER_MODE_SET_DEVICE) {
+		int len;
+		u8 cmd_ver = iwl_fw_lookup_cmd_ver(mvm->fw,
+						   REDUCE_TX_POWER_CMD,
+						   IWL_FW_CMD_VER_UNKNOWN);
+
+		if (cmd_ver == 6)
+			len = sizeof(mvm->txp_cmd.v6);
+		else if (fw_has_api(&mvm->fw->ucode_capa,
+				    IWL_UCODE_TLV_API_REDUCE_TX_POWER))
+			len = sizeof(mvm->txp_cmd.v5);
+		else if (fw_has_capa(&mvm->fw->ucode_capa,
+				     IWL_UCODE_TLV_CAPA_TX_POWER_ACK))
+			len = sizeof(mvm->txp_cmd.v4);
+		else
+			len = sizeof(mvm->txp_cmd.v3);
+
+		/* all structs have the same common part, add it */
+		len += sizeof(mvm->txp_cmd.common);
+
+		if (iwl_mvm_send_cmd_pdu(mvm, REDUCE_TX_POWER_CMD, 0,
+					 len, &mvm->txp_cmd))
+			IWL_ERR(mvm, "failed to update TX power\n");
+	}
+#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+
 	if (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
 		iwl_mvm_send_recovery_cmd(mvm, ERROR_RECOVERY_UPDATE_DB);
 
@@ -1704,9 +1933,6 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 						 IWL_TIME_SYNC_PROTOCOL_TM |
 						 IWL_TIME_SYNC_PROTOCOL_FTM);
 	}
-
-	if (!mvm->ptp_data.ptp_clock)
-		iwl_mvm_ptp_init(mvm);
 
 	if (iwl_acpi_get_eckv(mvm->dev, &mvm->ext_clock_valid))
 		IWL_DEBUG_INFO(mvm, "ECKV table doesn't exist in BIOS\n");
@@ -1728,10 +1954,9 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	iwl_mvm_tas_init(mvm);
 	iwl_mvm_leds_sync(mvm);
 
-	if (iwl_rfi_supported(mvm)) {
-		if (iwl_mvm_eval_dsm_rfi(mvm) == DSM_VALUE_RFI_ENABLE)
-			iwl_rfi_send_config_cmd(mvm, NULL);
-	}
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_mvm_send_system_features_control(mvm);
+#endif
 
 	iwl_mvm_mei_device_state(mvm, true);
 
@@ -1759,6 +1984,9 @@ int iwl_mvm_load_d3_fw(struct iwl_mvm *mvm)
 		goto error;
 	}
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_dnt_start(mvm->trans);
+#endif
 	ret = iwl_send_tx_ant_cfg(mvm, iwl_mvm_get_valid_tx_ant(mvm));
 	if (ret)
 		goto error;

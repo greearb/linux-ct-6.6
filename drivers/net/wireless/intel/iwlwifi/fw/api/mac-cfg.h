@@ -159,7 +159,7 @@ struct iwl_channel_switch_start_notif {
 #define CS_ERR_TX_BLOCK_TIMER_EXPIRED BIT(3)
 
 /**
- * struct iwl_channel_switch_error_notif_v1 - Channel switch error notification
+ * struct iwl_channel_switch_error_notif - Channel switch error notification
  *
  * @mac_id: the mac for which the ucode sends the notification for
  * @csa_err_mask: mask of channel switch error that can occur
@@ -231,11 +231,10 @@ struct iwl_mac_low_latency_cmd {
  * struct iwl_mac_client_data - configuration data for client MAC context
  *
  * @is_assoc: 1 for associated state, 0 otherwise
- * @esr_transition_timeout: the timeout required by the AP for the
- *	eSR transition.
+ * @esr_transition_timeout: the timeout required by the AP for the eSR transition.
  *	Available only from version 2 of the command.
- *	This values comes from the EMLSR transition delay in the EML
- *	Capabilities subfield.
+ *	This values comes from the EMLSR transition delay in the EML Capabilities
+ *	subfield.
  * @medium_sync_delay: the value as it appeasr in P802.11be_D2.2 Figure 9-1002j.
  * @assoc_id: unique ID assigned by the AP during association
  * @reserved1: alignment
@@ -308,9 +307,6 @@ enum iwl_mac_config_filter_flags {
  *	ACK-enabled AGG, (i.e. both BACK and non-BACK frames in single AGG).
  *	If the NIC is not ACK_ENABLED it may use the EOF-bit in first non-0
  *	len delim to determine if AGG or single.
- * @client: client mac data
- * @go_ibss: mac data for go or ibss
- * @p2p_dev: mac data for p2p device
  */
 struct iwl_mac_config_cmd {
 	/* COMMON_INDEX_HDR_API_S_VER_1 */

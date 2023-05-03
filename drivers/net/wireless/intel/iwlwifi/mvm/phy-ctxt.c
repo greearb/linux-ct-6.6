@@ -99,23 +99,12 @@ static void iwl_mvm_phy_ctxt_set_rxchain(struct iwl_mvm *mvm,
 		active_cnt = 2;
 	}
 
-	/*
-	 * If the firmware requested it, then we know that it supports
-	 * getting zero for the values to indicate "use one, but pick
-	 * which one yourself", which means it can dynamically pick one
-	 * that e.g. has better RSSI.
-	 */
-	if (mvm->fw_static_smps_request && active_cnt == 1 && idle_cnt == 1) {
-		idle_cnt = 0;
-		active_cnt = 0;
-	}
-
 	*rxchain_info = cpu_to_le32(iwl_mvm_get_valid_rx_ant(mvm) <<
 					PHY_RX_CHAIN_VALID_POS);
 	*rxchain_info |= cpu_to_le32(idle_cnt << PHY_RX_CHAIN_CNT_POS);
 	*rxchain_info |= cpu_to_le32(active_cnt <<
 					 PHY_RX_CHAIN_MIMO_CNT_POS);
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (unlikely(mvm->dbgfs_rx_phyinfo))
 		*rxchain_info = cpu_to_le32(mvm->dbgfs_rx_phyinfo);
 #endif
@@ -158,7 +147,8 @@ static void iwl_mvm_phy_ctxt_cmd_data(struct iwl_mvm *mvm,
 	iwl_mvm_set_chan_info_chandef(mvm, &cmd->ci, chandef);
 
 	/* we only support RLC command version 2 */
-	if (iwl_fw_lookup_cmd_ver(mvm->fw, WIDE_ID(DATA_PATH_GROUP, RLC_CONFIG_CMD), 0) < 2)
+	if (iwl_fw_lookup_cmd_ver(mvm->fw, WIDE_ID(DATA_PATH_GROUP,
+						   RLC_CONFIG_CMD), 0) < 2)
 		iwl_mvm_phy_ctxt_set_rxchain(mvm, ctxt, &cmd->rxchain_info,
 					     chains_static, chains_dynamic);
 }
@@ -191,6 +181,9 @@ int iwl_mvm_phy_send_rlc(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt,
 
 	iwl_mvm_phy_ctxt_set_rxchain(mvm, ctxt, &cmd.rlc.rx_chain_info,
 				     chains_static, chains_dynamic);
+
+	IWL_DEBUG_FW(mvm, "Send RLC command: phy=%d, rx_chain_info=0x%x\n",
+		     ctxt->id, cmd.rlc.rx_chain_info);
 
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(RLC_CONFIG_CMD,
 						    DATA_PATH_GROUP, 2),
@@ -301,7 +294,8 @@ int iwl_mvm_phy_ctxt_changed(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt,
 
 	lockdep_assert_held(&mvm->mutex);
 
-	if (iwl_fw_lookup_cmd_ver(mvm->fw, WIDE_ID(DATA_PATH_GROUP, RLC_CONFIG_CMD), 0) >= 2 &&
+	if (iwl_fw_lookup_cmd_ver(mvm->fw, WIDE_ID(DATA_PATH_GROUP,
+						   RLC_CONFIG_CMD), 0) >= 2 &&
 	    ctxt->channel == chandef->chan &&
 	    ctxt->width == chandef->width &&
 	    ctxt->center_freq1 == chandef->center_freq1)

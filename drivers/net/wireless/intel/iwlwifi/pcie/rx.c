@@ -699,7 +699,7 @@ static void iwl_pcie_free_rxq_dma(struct iwl_trans *trans,
 	rxq->used_bd = NULL;
 }
 
-static size_t iwl_pcie_rb_stts_size(struct iwl_trans *trans)
+static inline size_t iwl_pcie_rb_stts_size(struct iwl_trans *trans)
 {
 	bool use_rx_td = (trans->trans_cfg->device_family >=
 			  IWL_DEVICE_FAMILY_AX210);
@@ -754,7 +754,7 @@ static int iwl_pcie_alloc_rxq_dma(struct iwl_trans *trans,
 
 err:
 	for (i = 0; i < trans->num_rx_queues; i++) {
-		struct iwl_rxq *rxq = &trans_pcie->rxq[i];
+		rxq = &trans_pcie->rxq[i];
 
 		iwl_pcie_free_rxq_dma(trans, rxq);
 	}
@@ -1122,7 +1122,6 @@ static int _iwl_pcie_rx_init(struct iwl_trans *trans)
 		       sizeof(__le16) : sizeof(struct iwl_rb_status));
 
 		iwl_pcie_rx_init_rxb_lists(rxq);
-
 		spin_unlock_bh(&rxq->lock);
 
 		if (!rxq->napi.poll) {
@@ -1135,7 +1134,6 @@ static int _iwl_pcie_rx_init(struct iwl_trans *trans)
 				       poll);
 			napi_enable(&rxq->napi);
 		}
-
 	}
 
 	/* move the pool to the default queue and allocator ownerships */
@@ -1290,10 +1288,10 @@ static void iwl_pcie_rx_reuse_rbd(struct iwl_trans *trans,
 }
 
 static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
-				struct iwl_rxq *rxq,
-				struct iwl_rx_mem_buffer *rxb,
-				bool emergency,
-				int i)
+				  struct iwl_rxq *rxq,
+				  struct iwl_rx_mem_buffer *rxb,
+				  bool emergency,
+				  int idx)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_txq *txq = trans->txqs.txq[trans->txqs.cmd.q_id];
@@ -1373,7 +1371,7 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 			}
 		}
 
-		if (rxq->id == trans_pcie->def_rx_queue)
+		if (rxq->id == IWL_DEFAULT_RX_QUEUE)
 			iwl_op_mode_rx(trans->op_mode, &rxq->napi,
 				       &rxcb);
 		else
@@ -1385,7 +1383,7 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		 * if it is true then one of the handlers took the page.
 		 */
 
-		if (reclaim) {
+		if (reclaim && txq) {
 			u16 sequence = le16_to_cpu(pkt->hdr.sequence);
 			int index = SEQ_TO_INDEX(sequence);
 			int cmd_index = iwl_txq_get_cmd_index(txq, index);
@@ -1510,7 +1508,7 @@ restart:
 	spin_lock(&rxq->lock);
 	/* uCode's read index (stored in shared DRAM) indicates the last Rx
 	 * buffer that the driver may process (last buffer filled by ucode). */
-	r = le16_to_cpu(iwl_get_closed_rb_stts(trans, rxq)) & 0x0FFF;
+	r = iwl_get_closed_rb_stts(trans, rxq);
 	i = rxq->read;
 
 	/* W/A 9000 device step A0 wrap-around bug */
@@ -2290,6 +2288,12 @@ irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id)
 		sw_err = inta_hw & MSIX_HW_INT_CAUSES_REG_SW_ERR_BZ;
 	else
 		sw_err = inta_hw & MSIX_HW_INT_CAUSES_REG_SW_ERR;
+
+	if (inta_hw & MSIX_HW_INT_CAUSES_REG_TOP_FATAL_ERR) {
+		IWL_ERR(trans, "TOP Fatal error detected, inta_hw=0x%x.\n",
+			inta_hw);
+		/* TODO: PLDR flow required here for >= Bz */
+	}
 
 	/* Error detected by uCode */
 	if ((inta_fh & MSIX_FH_INT_CAUSES_FH_ERR) || sw_err) {

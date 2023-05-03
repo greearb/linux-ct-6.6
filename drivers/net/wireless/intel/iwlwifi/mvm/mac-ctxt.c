@@ -270,6 +270,11 @@ int iwl_mvm_mac_ctxt_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		goto exit_fail;
 	}
 
+#ifdef CPTCFG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
+	/* The third failure will send a udev event to user space */
+	mvmvif->session_prot_fail_num = 2;
+#endif
+
 	if (data.preferred_tsf != NUM_TSF_IDS)
 		mvmvif->tsf_id = data.preferred_tsf;
 	else
@@ -287,7 +292,8 @@ int iwl_mvm_mac_ctxt_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	mvmvif->time_event_data.id = TE_MAX;
 
 	/* No need to allocate data queues to P2P Device MAC and NAN.*/
-	if (vif->type == NL80211_IFTYPE_P2P_DEVICE)
+	if (vif->type == NL80211_IFTYPE_P2P_DEVICE ||
+	    vif->type == NL80211_IFTYPE_NAN)
 		return 0;
 
 	/* Allocate the CAB queue for softAP and GO interfaces */
@@ -592,20 +598,20 @@ void iwl_mvm_set_fw_dtim_tbtt(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	u32 dtim_offs;
 
 	/*
-	 * The DTIM count counts down, so when it is N that means N
-	 * more beacon intervals happen until the DTIM TBTT. Therefore
-	 * add this to the current time. If that ends up being in the
-	 * future, the firmware will handle it.
-	 *
-	 * Also note that the system_timestamp (which we get here as
-	 * "sync_device_ts") and TSF timestamp aren't at exactly the
-	 * same offset in the frame -- the TSF is at the first symbol
-	 * of the TSF, the system timestamp is at signal acquisition
-	 * time. This means there's an offset between them of at most
-	 * a few hundred microseconds (24 * 8 bits + PLCP time gives
-	 * 384us in the longest case), this is currently not relevant
-	 * as the firmware wakes up around 2ms before the TBTT.
-	 */
+	* The DTIM count counts down, so when it is N that means N
+	* more beacon intervals happen until the DTIM TBTT. Therefore
+	* add this to the current time. If that ends up being in the
+	* future, the firmware will handle it.
+	*
+	* Also note that the system_timestamp (which we get here as
+	* "sync_device_ts") and TSF timestamp aren't at exactly the
+	* same offset in the frame -- the TSF is at the first symbol
+	* of the TSF, the system timestamp is at signal acquisition
+	* time. This means there's an offset between them of at most
+	* a few hundred microseconds (24 * 8 bits + PLCP time gives
+	* 384us in the longest case), this is currently not relevant
+	* as the firmware wakes up around 2ms before the TBTT.
+	*/
 	dtim_offs = link_conf->sync_dtim_count *
 			link_conf->beacon_int;
 	/* convert TU to usecs */
@@ -630,6 +636,15 @@ __le32 iwl_mvm_mac_ctxt_cmd_p2p_sta_get_oppps_ctwin(struct iwl_mvm *mvm,
 	struct ieee80211_p2p_noa_attr *noa =
 		&vif->bss_conf.p2p_noa_attr;
 
+#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
+	/*
+		* Pass CT window including OPPPS enable flag as part of a WA
+		* to pass P2P OPPPS certification test. Refer to
+		* IWLMVM_P2P_OPPPS_TEST_WA description in Kconfig.noupstream.
+		*/
+	if (mvm->p2p_opps_test_wa_vif)
+		return cpu_to_le32(noa->oppps_ctwindow);
+#endif
 	return cpu_to_le32(noa->oppps_ctwindow &
 			IEEE80211_P2P_OPPPS_CTWINDOW_MASK);
 }
@@ -671,7 +686,6 @@ static int iwl_mvm_mac_ctxt_cmd_sta(struct iwl_mvm *mvm,
 	if (vif->p2p) {
 		cmd.p2p_sta.ctwin =
 			iwl_mvm_mac_ctxt_cmd_p2p_sta_get_oppps_ctwin(mvm, vif);
-
 		ctxt_sta = &cmd.p2p_sta.sta;
 	} else {
 		ctxt_sta = &cmd.sta;
@@ -942,7 +956,9 @@ u8 iwl_mvm_mac_ctxt_get_lowest_rate(struct iwl_mvm *mvm,
 	} else {
 		rate = IWL_RATE_6M_INDEX;
 	}
-
+#ifdef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
+	rate = IWL_FIRST_OFDM_RATE;
+#endif
 	return rate;
 }
 
@@ -998,13 +1014,18 @@ static void iwl_mvm_mac_ctxt_set_tx(struct iwl_mvm *mvm,
 						TX_CMD_FLG_BT_PRIO_POS;
 	tx->tx_flags = cpu_to_le32(tx_flags);
 
+	/*
+	 * TODO: the firwmare advertises this, but has a bug. We should revert
+	 *	 this when the firmware will be fixed.
+	 */
 	if (!fw_has_capa(&mvm->fw->ucode_capa,
-			 IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION))
+			 IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION) || true) {
 		iwl_mvm_toggle_tx_ant(mvm, &mvm->mgmt_last_antenna_idx);
 
-	tx->rate_n_flags =
-		cpu_to_le32(BIT(mvm->mgmt_last_antenna_idx) <<
-			    RATE_MCS_ANT_POS);
+		tx->rate_n_flags =
+			cpu_to_le32(BIT(mvm->mgmt_last_antenna_idx) <<
+				    RATE_MCS_ANT_POS);
+	}
 
 	rate = iwl_mvm_mac_ctxt_get_beacon_rate(mvm, info, vif);
 
@@ -1083,6 +1104,19 @@ static int iwl_mvm_mac_ctxt_send_beacon_v7(struct iwl_mvm *mvm,
 						sizeof(beacon_cmd));
 }
 
+bool iwl_mvm_enable_fils(struct iwl_mvm *mvm,
+			 struct ieee80211_chanctx_conf *ctx)
+{
+	if (IWL_MVM_DISABLE_AP_FILS)
+		return false;
+
+	if (cfg80211_channel_is_psc(ctx->def.chan))
+		return true;
+
+	return (ctx->def.chan->band == NL80211_BAND_6GHZ &&
+		ctx->def.width >= NL80211_CHAN_WIDTH_80);
+}
+
 static int iwl_mvm_mac_ctxt_send_beacon_v9(struct iwl_mvm *mvm,
 					   struct ieee80211_vif *vif,
 					   struct sk_buff *beacon,
@@ -1102,8 +1136,7 @@ static int iwl_mvm_mac_ctxt_send_beacon_v9(struct iwl_mvm *mvm,
 	ctx = rcu_dereference(link_conf->chanctx_conf);
 	channel = ieee80211_frequency_to_channel(ctx->def.chan->center_freq);
 	WARN_ON(channel == 0);
-	if (cfg80211_channel_is_psc(ctx->def.chan) &&
-	    !IWL_MVM_DISABLE_AP_FILS) {
+	if (iwl_mvm_enable_fils(mvm, ctx)) {
 		flags |= iwl_fw_lookup_cmd_ver(mvm->fw, BEACON_TEMPLATE_CMD,
 					       0) > 10 ?
 			IWL_MAC_BEACON_FILS :
@@ -1159,7 +1192,9 @@ static int iwl_mvm_mac_ctxt_send_beacon(struct iwl_mvm *mvm,
 			 IWL_UCODE_TLV_CAPA_CSA_AND_TBTT_OFFLOAD))
 		return iwl_mvm_mac_ctxt_send_beacon_v6(mvm, vif, beacon);
 
-	if (fw_has_api(&mvm->fw->ucode_capa,
+	/* TODO: remove first condition once FW merge new TLV */
+	if (iwl_mvm_has_new_tx_api(mvm) ||
+	    fw_has_api(&mvm->fw->ucode_capa,
 		       IWL_UCODE_TLV_API_NEW_BEACON_TEMPLATE))
 		return iwl_mvm_mac_ctxt_send_beacon_v9(mvm, vif, beacon,
 						       link_conf);
@@ -1183,7 +1218,7 @@ int iwl_mvm_mac_ctxt_beacon_changed(struct iwl_mvm *mvm,
 	if (!beacon)
 		return -ENOMEM;
 
-#ifdef CONFIG_IWLWIFI_DEBUGFS
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (mvm->beacon_inject_active) {
 		dev_kfree_skb(beacon);
 		return -EBUSY;
@@ -1382,6 +1417,9 @@ int iwl_mvm_mac_ctxt_add(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	int ret;
 
+	if (WARN_ON_ONCE(vif->type == NL80211_IFTYPE_NAN))
+		return -EOPNOTSUPP;
+
 	if (WARN_ONCE(mvmvif->uploaded, "Adding active MAC %pM/%d\n",
 		      vif->addr, ieee80211_vif_type_p2p(vif)))
 		return -EIO;
@@ -1403,6 +1441,9 @@ int iwl_mvm_mac_ctxt_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 
+	if (WARN_ON_ONCE(vif->type == NL80211_IFTYPE_NAN))
+		return -EOPNOTSUPP;
+
 	if (WARN_ONCE(!mvmvif->uploaded, "Changing inactive MAC %pM/%d\n",
 		      vif->addr, ieee80211_vif_type_p2p(vif)))
 		return -EIO;
@@ -1416,6 +1457,9 @@ int iwl_mvm_mac_ctxt_remove(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mac_ctx_cmd cmd;
 	int ret;
+
+	if (WARN_ON_ONCE(vif->type == NL80211_IFTYPE_NAN))
+		return -EOPNOTSUPP;
 
 	if (WARN_ONCE(!mvmvif->uploaded, "Removing inactive MAC %pM/%d\n",
 		      vif->addr, ieee80211_vif_type_p2p(vif)))
@@ -1761,6 +1805,7 @@ void iwl_mvm_channel_switch_start_notif(struct iwl_mvm *mvm,
 	u32 id_n_color, csa_id;
 	/* save mac_id or link_id to use later to cancel csa if needed */
 	u32 id;
+	u32 mac_link_id = 0;
 	u8 notif_ver = iwl_fw_lookup_notif_ver(mvm->fw, MAC_CONF_GROUP,
 					       CHANNEL_SWITCH_START_NOTIF, 0);
 	bool csa_active;
@@ -1790,6 +1835,7 @@ void iwl_mvm_channel_switch_start_notif(struct iwl_mvm *mvm,
 			goto out_unlock;
 
 		id = link_id;
+		mac_link_id = bss_conf->link_id;
 		vif = bss_conf->vif;
 		csa_active = bss_conf->csa_active;
 	}
@@ -1839,7 +1885,7 @@ void iwl_mvm_channel_switch_start_notif(struct iwl_mvm *mvm,
 
 		iwl_mvm_csa_client_absent(mvm, vif);
 		cancel_delayed_work(&mvmvif->csa_work);
-		ieee80211_chswitch_done(vif, true);
+		ieee80211_chswitch_done(vif, true, mac_link_id);
 		break;
 	default:
 		/* should never happen */
