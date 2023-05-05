@@ -307,7 +307,7 @@ struct iwl_mei_ops {
 	void (*nic_stolen)(void *priv);
 };
 
-#if IS_ENABLED(CPTCFG_IWLMEI)
+#if IS_ENABLED(CONFIG_IWLMEI)
 
 /**
  * iwl_mei_is_connected() - is the connection to the CSME firmware established?
@@ -524,6 +524,6 @@ static inline int iwl_mei_pldr_req(void)
 static inline void iwl_mei_alive_notif(bool success)
 {}
 
-#endif /* CPTCFG_IWLMEI */
+#endif /* CONFIG_IWLMEI */
 
 #endif /* __iwl_mei_h__ */

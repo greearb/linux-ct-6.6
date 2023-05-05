@@ -15,7 +15,7 @@
 #include "fw/api/power.h"
 #include "fw/pnvm.h"
 
-#define XVT_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define XVT_UCODE_ALIVE_TIMEOUT	(HZ * CONFIG_IWL_TIMEOUT_FACTOR)
 
 struct iwl_xvt_alive_data {
 	bool valid;
@@ -260,7 +260,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	}
 
 	xvt->fw_running = true;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	iwl_fw_set_dbg_rec_on(&xvt->fwrt);
 #endif
 

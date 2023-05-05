@@ -22,10 +22,10 @@
 #include "iwl-modparams.h"
 #include "fw/api/alive.h"
 #include "fw/api/mac.h"
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 #include "iwl-dbg-cfg.h"
 #endif
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-tm-gnl.h"
 #endif
 
@@ -39,7 +39,7 @@
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
 MODULE_LICENSE("GPL");
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 static struct dentry *iwl_dbgfs_root;
 #endif
 
@@ -64,7 +64,7 @@ struct iwl_drv {
 	struct iwl_op_mode *op_mode;
 	struct iwl_trans *trans;
 	struct device *dev;
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	/**
 	 * @xvt_mode_on: XVT mode is turned on
 	 */
@@ -76,7 +76,7 @@ struct iwl_drv {
 
 	struct completion request_firmware_complete;
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	struct dentry *dbgfs_drv;
 	struct dentry *dbgfs_trans;
 	struct dentry *dbgfs_op_mode;
@@ -86,7 +86,7 @@ struct iwl_drv {
 enum {
 	DVM_OP_MODE,
 	MVM_OP_MODE,
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	XVT_OP_MODE,
 #endif
 };
@@ -100,12 +100,12 @@ static struct iwlwifi_opmode_table {
 } iwlwifi_opmode_table[] = {		/* ops set when driver is initialized */
 	[DVM_OP_MODE] = { .name = "iwldvm", .ops = NULL },
 	[MVM_OP_MODE] = { .name = "iwlmvm", .ops = NULL },
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	[XVT_OP_MODE] = { .name = "iwlxvt", .ops = NULL },
 #endif
 };
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 /* kernel object for a device dedicated
  * folder in the sysfs */
 static struct kobject *iwl_kobj;
@@ -296,7 +296,7 @@ static void iwl_remove_sysfs_file(struct iwl_drv *drv)
 	sysfs_remove_link(iwl_kobj, dev_name(drv->dev));
 	device_remove_file(drv->dev, &dev_attr_op_mode);
 }
-#endif /* CPTCFG_IWLXVT */
+#endif /* CONFIG_IWLXVT */
 
 #define IWL_DEFAULT_SCAN_CHANNELS 40
 
@@ -434,7 +434,7 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	const struct iwl_cfg *cfg = drv->trans->cfg;
 	char _fw_name_pre[FW_NAME_PRE_BUFSIZE];
 	const char *fw_name_pre;
-#if defined(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES)
+#if defined(CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES)
 	char fw_name_temp[64];
 #endif
 
@@ -454,13 +454,13 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	else
 		drv->fw_index--;
 
-#ifdef CPTCFG_IWLWIFI_DISALLOW_OLDER_FW
+#ifdef CONFIG_IWLWIFI_DISALLOW_OLDER_FW
 	/* The dbg-cfg check here works because the first time we get
 	 * here we always load the 'api_max' version, and once that
 	 * has returned we load the dbg-cfg file.
 	 */
 	if ((drv->fw_index != cfg->ucode_api_max
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	     && !drv->trans->dbg_cfg.load_old_fw
 #endif
 	    ) ||
@@ -488,14 +488,14 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	snprintf(drv->firmware_name, sizeof(drv->firmware_name), "%s-%d.ucode",
 		 fw_name_pre, drv->fw_index);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (drv->trans->dbg_cfg.fw_file_pre) {
 		snprintf(fw_name_temp, sizeof(fw_name_temp), "%s%s",
 			 drv->trans->dbg_cfg.fw_file_pre, drv->firmware_name);
 		strncpy(drv->firmware_name, fw_name_temp,
 			sizeof(drv->firmware_name));
 	}
-#endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
+#endif /* CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 
 	IWL_DEBUG_FW_INFO(drv, "attempting to load firmware '%s'\n",
 			  drv->firmware_name);
@@ -939,7 +939,7 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	int num_of_cpus;
 	bool usniffer_req = false;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (ucode->magic == cpu_to_le32(IWL_TLV_FW_DBG_MAGIC)) {
 		size_t dbg_data_ofs = offsetof(struct iwl_tlv_ucode_header,
 					       human_readable);
@@ -984,7 +984,7 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 
 	len -= sizeof(*ucode);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 fw_dbg_conf:
 #endif
 
@@ -1171,7 +1171,7 @@ fw_dbg_conf:
 			if (tlv_len != sizeof(u32))
 				goto invalid_tlv_len;
 			drv->fw.phy_config = le32_to_cpup((const __le32 *)tlv_data);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 			if (drv->trans->dbg_cfg.valid_ants & ~ANT_ABC)
 				IWL_ERR(drv,
 					"Invalid value for antennas: 0x%x\n",
@@ -1279,8 +1279,8 @@ fw_dbg_conf:
 				break;
 			}
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 			if (drv->trans->dbg_cfg.dbm_destination_path) {
 				IWL_ERR(drv,
 					"Ignoring destination, ini file present\n");
@@ -1700,7 +1700,7 @@ _iwl_op_mode_start(struct iwl_drv *drv, struct iwlwifi_opmode_table *op)
 
 	for (retry = 0; retry <= max_retry; retry++) {
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		drv->dbgfs_op_mode = debugfs_create_dir(op->name,
 							drv->dbgfs_drv);
 		dbgfs_dir = drv->dbgfs_op_mode;
@@ -1717,7 +1717,7 @@ _iwl_op_mode_start(struct iwl_drv *drv, struct iwlwifi_opmode_table *op)
 
 		IWL_ERR(drv, "retry init count %d\n", retry);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		debugfs_remove_recursive(drv->dbgfs_op_mode);
 		drv->dbgfs_op_mode = NULL;
 #endif
@@ -1736,7 +1736,7 @@ static void _iwl_op_mode_stop(struct iwl_drv *drv)
 		iwl_op_mode_stop(drv->op_mode);
 		drv->op_mode = NULL;
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		debugfs_remove_recursive(drv->dbgfs_op_mode);
 		drv->dbgfs_op_mode = NULL;
 #endif
@@ -1765,7 +1765,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	bool load_module = false;
 	bool usniffer_images = false;
 	bool failure = true;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	const struct firmware *fw_dbg_config;
 	int load_fw_dbg_err = -ENOENT;
 #endif
@@ -1807,7 +1807,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	if (err)
 		goto try_again;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (!ucode->ver && drv->trans->dbg_cfg.fw_dbg_conf) {
 		load_fw_dbg_err =
 			request_firmware(&fw_dbg_config,
@@ -2002,7 +2002,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	/* We have our copies now, allow OS release its copies */
 	release_firmware(ucode_raw);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (!load_fw_dbg_err)
 		release_firmware(fw_dbg_config);
 #endif
@@ -2022,7 +2022,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		break;
 	}
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	if (iwlwifi_mod_params.xvt_default_mode && drv->fw.type == IWL_FW_MVM)
 		op = &iwlwifi_opmode_table[XVT_OP_MODE];
 
@@ -2102,12 +2102,12 @@ struct iwl_drv *iwl_drv_start(struct iwl_trans *trans)
 	init_completion(&drv->request_firmware_complete);
 	INIT_LIST_HEAD(&drv->list);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	trans->dbg_cfg = current_dbg_config;
 	iwl_dbg_cfg_load_ini(drv->trans->dev, &drv->trans->dbg_cfg);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	/* Create the device debugfs entries. */
 	drv->dbgfs_drv = debugfs_create_dir(dev_name(trans->dev),
 					    iwl_dbgfs_root);
@@ -2116,7 +2116,7 @@ struct iwl_drv *iwl_drv_start(struct iwl_trans *trans)
 	drv->trans->dbgfs_dir = debugfs_create_dir("trans", drv->dbgfs_drv);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_gnl_add(drv->trans);
 #endif
 
@@ -2144,7 +2144,7 @@ struct iwl_drv *iwl_drv_start(struct iwl_trans *trans)
 		goto err_fw;
 	}
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	ret = iwl_create_sysfs_file(drv);
 	if (ret) {
 		IWL_ERR(trans, "Couldn't create sysfs entry\n");
@@ -2155,10 +2155,10 @@ struct iwl_drv *iwl_drv_start(struct iwl_trans *trans)
 	return drv;
 
 err_fw:
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_gnl_remove(drv->trans);
 #endif
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	debugfs_remove_recursive(drv->dbgfs_drv);
 #endif
 	iwl_dbg_tlv_free(drv->trans);
@@ -2186,22 +2186,22 @@ void iwl_drv_stop(struct iwl_drv *drv)
 		list_del(&drv->list);
 	mutex_unlock(&iwlwifi_opmode_table_mtx);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	drv->trans->ops->debugfs_cleanup(drv->trans);
 
 	debugfs_remove_recursive(drv->dbgfs_drv);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_dbg_cfg_free(&drv->trans->dbg_cfg);
 #endif
 	iwl_dbg_tlv_free(drv->trans);
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	iwl_remove_sysfs_file(drv);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_gnl_remove(drv->trans);
 #endif
 
@@ -2272,12 +2272,12 @@ static int __init iwl_drv_init(void)
 	for (i = 0; i < ARRAY_SIZE(iwlwifi_opmode_table); i++)
 		INIT_LIST_HEAD(&iwlwifi_opmode_table[i].drv);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	if (iwl_tm_gnl_init())
 		return -EFAULT;
 #endif
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	iwl_kobj = kobject_create_and_add("devices", &THIS_MODULE->mkobj.kobj);
 	if (!iwl_kobj) {
 		err = -ENOMEM;
@@ -2287,7 +2287,7 @@ static int __init iwl_drv_init(void)
 
 	pr_info(DRV_DESCRIPTION "\n");
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	/* Create the root of iwlwifi debugfs subsystem. */
 	iwl_dbgfs_root = debugfs_create_dir(DRV_NAME, NULL);
 #endif
@@ -2299,14 +2299,14 @@ static int __init iwl_drv_init(void)
 	return 0;
 
 cleanup_debugfs:
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	kobject_put(iwl_kobj);
 cleanup_tm_gnl:
 #endif
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_gnl_exit();
 #endif
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	debugfs_remove_recursive(iwl_dbgfs_root);
 #endif
 	return err;
@@ -2317,27 +2317,27 @@ static void __exit iwl_drv_exit(void)
 {
 	iwl_pci_unregister_driver();
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	debugfs_remove_recursive(iwl_dbgfs_root);
 #endif
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	if (iwl_kobj)
 		kobject_put(iwl_kobj);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_gnl_exit();
 #endif
 }
 module_exit(iwl_drv_exit);
 
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 module_param_named(debug, iwlwifi_mod_params.debug_level, uint, 0644);
 MODULE_PARM_DESC(debug, "debug output mask");
 #endif
 
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 module_param_named(xvt_default_mode, iwlwifi_mod_params.xvt_default_mode,
 		   bool, S_IRUGO);
 MODULE_PARM_DESC(xvt_default_mode, "xVT is the default operation mode (default: false)");

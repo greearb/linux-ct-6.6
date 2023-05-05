@@ -344,7 +344,7 @@ int iwl_nvm_init(struct iwl_mvm *mvm)
 		mvm->nvm_sections[section].data = temp;
 		mvm->nvm_sections[section].length = ret;
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		switch (section) {
 		case NVM_SECTION_TYPE_SW:
 			mvm->nvm_sw_blob.data = temp;
@@ -438,7 +438,7 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 
 	cmd.len[0] = sizeof(struct iwl_mcc_update_cmd);
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	if (mvm->trans->trans_cfg->device_family >
 		IWL_DEVICE_FAMILY_9000 &&
 	    src_id == MCC_SOURCE_MCC_API)

@@ -28,7 +28,7 @@
 #include "internal.h"
 #include "iwl-fh.h"
 #include "iwl-context-info-gen3.h"
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
 #endif
 
@@ -137,13 +137,13 @@ static int iwl_trans_pcie_sw_reset(struct iwl_trans *trans,
 	if (trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_SW_RESET);
-		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
-			     20000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(10000 * CONFIG_IWL_DELAY_FACTOR,
+			     20000 * CONFIG_IWL_DELAY_FACTOR);
 	} else {
 		iwl_set_bit(trans, CSR_RESET,
 			    CSR_RESET_REG_FLAG_SW_RESET);
-		usleep_range(5000 * CPTCFG_IWL_DELAY_FACTOR,
-			     6000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(5000 * CONFIG_IWL_DELAY_FACTOR,
+			     6000 * CONFIG_IWL_DELAY_FACTOR);
 	}
 
 	if (retake_ownership)
@@ -482,8 +482,8 @@ void iwl_pcie_apm_stop_master(struct iwl_trans *trans)
 				   CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS,
 				   CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS,
 				   100);
-		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
-			     20000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(10000 * CONFIG_IWL_DELAY_FACTOR,
+			     20000 * CONFIG_IWL_DELAY_FACTOR);
 	} else {
 		iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_STOP_MASTER);
 
@@ -774,7 +774,7 @@ static int iwl_pcie_load_section(struct iwl_trans *trans, u8 section_num,
 	return ret;
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_pcie_override_secure_boot_cfg(struct iwl_trans *trans)
 {
 	u32 val;
@@ -1057,7 +1057,7 @@ static int iwl_pcie_load_given_ucode(struct iwl_trans *trans,
 	if (iwl_pcie_dbg_on(trans))
 		iwl_pcie_apply_destination(trans);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_configure(trans, image);
 #endif
 
@@ -1081,11 +1081,11 @@ static int iwl_pcie_load_given_ucode_8000(struct iwl_trans *trans,
 	if (iwl_pcie_dbg_on(trans))
 		iwl_pcie_apply_destination(trans);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_configure(trans, image);
 #endif
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_pcie_override_secure_boot_cfg(trans);
 #endif
 
@@ -2631,7 +2631,7 @@ void iwl_pcie_dump_csr(struct iwl_trans *trans)
 	}
 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 /* create and remove of files */
 #define DEBUGFS_ADD_FILE(name, parent, mode) do {			\
 	debugfs_create_file(#name, mode, parent, trans,			\
@@ -2829,7 +2829,7 @@ static ssize_t iwl_dbgfs_interrupt_read(struct file *file,
 			"\tLast Restarting Code:  0x%X\n",
 			isr_stats->err_code);
 	}
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 	pos += scnprintf(buf + pos, bufsz - pos, "Frame transmitted:\t\t %u\n",
 		isr_stats->sch);
 	pos += scnprintf(buf + pos, bufsz - pos, "Alive interrupt:\t\t %u\n",
@@ -3136,7 +3136,7 @@ static void iwl_trans_pcie_debugfs_cleanup(struct iwl_trans *trans)
 	data->state = IWL_FW_MON_DBGFS_STATE_DISABLED;
 	mutex_unlock(&data->mutex);
 }
-#endif /*CPTCFG_IWLWIFI_DEBUGFS */
+#endif /*CONFIG_IWLWIFI_DEBUGFS */
 
 static u32 iwl_trans_pcie_get_cmdlen(struct iwl_trans *trans, void *tfd)
 {
@@ -3628,7 +3628,7 @@ static const struct iwl_trans_ops trans_ops_pcie = {
 
 	.freeze_txq_timer = iwl_trans_txq_freeze_timer,
 	.block_txq_ptrs = iwl_trans_pcie_block_txq_ptrs,
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	.debugfs_cleanup = iwl_trans_pcie_debugfs_cleanup,
 #endif
 };
@@ -3655,7 +3655,7 @@ static const struct iwl_trans_ops trans_ops_pcie_gen2 = {
 	.set_pnvm = iwl_trans_pcie_ctx_info_gen3_set_pnvm,
 	.load_reduce_power = iwl_trans_pcie_ctx_info_gen3_load_reduce_power,
 	.set_reduce_power = iwl_trans_pcie_ctx_info_gen3_set_reduce_power,
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	.debugfs_cleanup = iwl_trans_pcie_debugfs_cleanup,
 #endif
 };
@@ -3819,7 +3819,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 		}
 	 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	trans_pcie->fw_mon_data.state = IWL_FW_MON_DBGFS_STATE_CLOSED;
 	mutex_init(&trans_pcie->fw_mon_data.mutex);
 #endif

@@ -114,7 +114,7 @@ XVT_DEBUGFS_WRITE_FILE_OPS(fw_restart, 10);
 XVT_DEBUGFS_WRITE_FILE_OPS(fw_nmi, 10);
 XVT_DEBUGFS_WRITE_FILE_OPS(set_profile, 10);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 int iwl_xvt_dbgfs_register(struct iwl_xvt *xvt, struct dentry *dbgfs_dir)
 {
 	xvt->debugfs_dir = dbgfs_dir;
@@ -129,4 +129,4 @@ err:
 	IWL_ERR(xvt, "Can't create the xvt debugfs directory\n");
 	return -ENOMEM;
 }
-#endif /* CPTCFG_IWLWIFI_DEBUGFS */
+#endif /* CONFIG_IWLWIFI_DEBUGFS */

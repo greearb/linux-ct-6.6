@@ -66,7 +66,7 @@ void __iwl_err(struct device *dev, enum iwl_err_mode mode, const char *fmt, ...)
 }
 IWL_EXPORT_SYMBOL(__iwl_err);
 
-#if defined(CPTCFG_IWLWIFI_DEBUG) || defined(CPTCFG_IWLWIFI_DEVICE_TRACING)
+#if defined(CONFIG_IWLWIFI_DEBUG) || defined(CONFIG_IWLWIFI_DEVICE_TRACING)
 void __iwl_dbg(struct device *dev,
 	       u32 level, bool limit, const char *function,
 	       const char *fmt, ...)
@@ -77,7 +77,7 @@ void __iwl_dbg(struct device *dev,
 	va_list args;
 
 	va_start(args, fmt);
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 	if (iwl_have_debug_level(level) &&
 	    (!limit || net_ratelimit())) {
 		va_list args2;
@@ -94,7 +94,7 @@ void __iwl_dbg(struct device *dev,
 }
 IWL_EXPORT_SYMBOL(__iwl_dbg);
 
-#ifdef CPTCFG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
+#ifdef CONFIG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
 u32 iwlwifi_debug_session_prot_debug_level;
 IWL_EXPORT_SYMBOL(iwlwifi_debug_session_prot_debug_level);
 #endif

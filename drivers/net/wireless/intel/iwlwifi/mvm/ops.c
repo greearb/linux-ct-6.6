@@ -33,7 +33,7 @@
 #include "fw/uefi.h"
 #include "time-sync.h"
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
 #include "iwl-dnt-dispatch.h"
 #include "iwl-tm-gnl.h"
@@ -59,7 +59,7 @@ module_param_named(power_scheme, iwlmvm_mod_params.power_scheme, int, 0444);
 MODULE_PARM_DESC(power_scheme,
 		 "power management scheme: 1-active, 2-balanced, 3-low power, default: 2");
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 static void iwl_mvm_rx_fw_logs(struct iwl_mvm *mvm,
 			       struct iwl_rx_cmd_buffer *rxb)
 {
@@ -84,7 +84,7 @@ static int __init iwl_mvm_init(void)
 	if (ret)
 		pr_err("Unable to register MVM op_mode: %d\n", ret);
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	iwl_mvm_vendor_cmd_init();
 #endif
 
@@ -96,7 +96,7 @@ static void __exit iwl_mvm_exit(void)
 {
 	iwl_opmode_deregister("iwlmvm");
 	iwl_mvm_rate_control_unregister();
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	iwl_mvm_vendor_cmd_exit();
 #endif
 }
@@ -338,13 +338,13 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 		       iwl_mvm_tlc_update_notif, RX_HANDLER_SYNC,
 		       struct iwl_tlc_update_notif),
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	RX_HANDLER_GRP_NO_SIZE(LOCATION_GROUP, CSI_HEADER_NOTIFICATION,
 			       iwl_mvm_rx_csi_header, RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(LOCATION_GROUP, CSI_CHUNKS_NOTIFICATION,
 		       iwl_mvm_rx_csi_chunk, RX_HANDLER_ASYNC_LOCKED,
 		       struct iwl_csi_chunk_notification),
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 
 	RX_HANDLER(BT_PROFILE_NOTIFICATION, iwl_mvm_rx_bt_coex_notif,
 		   RX_HANDLER_ASYNC_LOCKED, struct iwl_bt_coex_profile_notif),
@@ -425,14 +425,14 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 	RX_HANDLER_GRP(DATA_PATH_GROUP, STA_PM_NOTIF,
 		       iwl_mvm_sta_pm_notif, RX_HANDLER_SYNC,
 		       struct iwl_mvm_pm_state_notification),
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_TERMINATE_NOTIF,
 		       iwl_mvm_nan_de_term_notif, RX_HANDLER_SYNC,
 		       struct iwl_nan_de_term),
 	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_EVENT_NOTIF,
 		       iwl_mvm_nan_match, RX_HANDLER_SYNC,
 		       struct iwl_nan_disc_evt_notify_v1),
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 	RX_HANDLER_GRP(MAC_CONF_GROUP, PROBE_RESPONSE_DATA_NOTIF,
 		       iwl_mvm_probe_resp_data_notif,
 		       RX_HANDLER_ASYNC_LOCKED,
@@ -444,7 +444,7 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 		       iwl_mvm_channel_switch_error_notif,
 		       RX_HANDLER_ASYNC_UNLOCKED,
 		       struct iwl_channel_switch_error_notif),
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	RX_HANDLER_NO_SIZE(DEBUG_LOG_MSG, iwl_mvm_rx_fw_logs, RX_HANDLER_SYNC),
 #endif
 	RX_HANDLER_GRP(DATA_PATH_GROUP, MONITOR_NOTIF,
@@ -767,7 +767,7 @@ unlock:
 	mutex_unlock(&mvm->mutex);
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_mvm_init_modparams(struct iwl_mvm *mvm)
 {
 #define IWL_DBG_CFG(t, n)			/* nothing */
@@ -835,7 +835,7 @@ static const struct iwl_fw_runtime_ops iwl_mvm_fwrt_ops = {
 	.d3_debug_enable = iwl_mvm_d3_debug_enable,
 };
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 static int iwl_mvm_tm_send_hcmd(void *op_mode, struct iwl_host_cmd *host_cmd)
 {
 	struct iwl_mvm *mvm = (struct iwl_mvm *)op_mode;
@@ -985,7 +985,7 @@ static void iwl_mvm_mei_roaming_forbidden(void *priv, bool forbidden)
 	if (!mvm->hw_registered || !mvm->csme_vif)
 		return;
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	iwl_mvm_send_roaming_forbidden_event(mvm, mvm->csme_vif, forbidden);
 #endif
 }
@@ -1013,7 +1013,7 @@ out_free:
 	iwl_fw_flush_dumps(&mvm->fwrt);
 	iwl_mvm_thermal_exit(mvm);
 	iwl_fw_runtime_free(&mvm->fwrt);
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_free(mvm->trans);
 #endif
 	iwl_phy_db_free(mvm->phy_db);
@@ -1268,7 +1268,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	hw->max_rx_aggregation_subframes = max_agg;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (trans->dbg_cfg.rx_agg_subframes)
 		hw->max_rx_aggregation_subframes =
 			trans->dbg_cfg.rx_agg_subframes;
@@ -1364,13 +1364,13 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	init_waitqueue_head(&mvm->rx_sync_waitq);
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	/*
 	 * by default capture all frame types
 	 * (but of course leave it disabled)
 	 */
 	mvm->csi_cfg.frame_types = ~0ULL;
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 
 	mvm->queue_sync_state = 0;
 
@@ -1382,17 +1382,17 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	mvm->tcm.ll_ts = jiffies;
 	mvm->tcm.uapsd_nonagg_ts = jiffies;
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 	INIT_LIST_HEAD(&mvm->tdls_peer_cache_list);
 #endif
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	mvm->rx_filters = IWL_MVM_VENDOR_RXFILTER_EINVAL;
 #endif
 
 	INIT_DELAYED_WORK(&mvm->cs_tx_unblock_dwork, iwl_mvm_tx_unblock_dwork);
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	/* set command/notification versions we care about */
 	mvm->cmd_ver.csi_notif =
 		iwl_fw_lookup_notif_ver(mvm->fw, LOCATION_GROUP,
@@ -1486,7 +1486,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	/* set up notification wait support */
 	iwl_notification_wait_init(&mvm->notif_wait);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_init(mvm->trans, dbgfs_dir);
 	iwl_tm_init(trans, mvm->fw, &mvm->mutex, mvm);
 #endif
@@ -1503,7 +1503,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	if (iwlwifi_mod_params.nvm_file)
 		mvm->nvm_file_name = iwlwifi_mod_params.nvm_file;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	else if (trans->dbg_cfg.nvm_file)
 		mvm->nvm_file_name = trans->dbg_cfg.nvm_file;
 #endif
@@ -1534,7 +1534,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	else
 		memset(&mvm->rx_stats, 0, sizeof(struct mvm_statistics_rx));
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_mvm_init_modparams(mvm);
 #endif
 
@@ -1576,7 +1576,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	if (iwlmvm_mod_params.init_dbg)
 		return op_mode;
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_free(trans);
 #endif
 	iwl_phy_db_free(mvm->phy_db);
@@ -1605,7 +1605,7 @@ void iwl_mvm_stop_device(struct iwl_mvm *mvm)
 static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 {
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	void *iftype_free = NULL;
 #endif
 	int i;
@@ -1645,20 +1645,20 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 	kfree(mvm->error_recovery_buf);
 	mvm->error_recovery_buf = NULL;
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	kfree(mvm->mcast_active_filter_cmd);
 	mvm->mcast_active_filter_cmd = NULL;
 
 	if (mvm->hw_registered)
 		iwl_mvm_vendor_cmds_unregister(mvm);
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 
 	iwl_trans_op_mode_leave(mvm->trans);
 
 	iwl_phy_db_free(mvm->phy_db);
 	mvm->phy_db = NULL;
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_free(mvm->trans);
 #endif
 	kfree(mvm->nvm_data);
@@ -1670,9 +1670,9 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 
 	cancel_delayed_work_sync(&mvm->tcm.work);
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 	iwl_mvm_tdls_peer_cache_clear(mvm, NULL);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
 
 	iwl_fw_runtime_free(&mvm->fwrt);
 	mutex_destroy(&mvm->mutex);
@@ -1680,14 +1680,14 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 	if (mvm->mei_registered)
 		iwl_mei_unregister_complete();
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mvm->trans->dbg_cfg.eml_capa_override >= 0)
 		iftype_free = (void *)(uintptr_t)mvm->hw->wiphy->iftype_ext_capab;
 #endif
 
 	ieee80211_free_hw(mvm->hw);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	kfree(iftype_free);
 #endif
 }
@@ -1833,7 +1833,7 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	/*
 	 * RX data may be forwarded to userspace in case the user
 	 * requested to monitor the rx w/o affecting the regular flow.
@@ -1859,7 +1859,7 @@ void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	/*
 	 * RX data may be forwarded to userspace in case the user
 	 * requested to monitor the rx w/o affecting the regular flow.
@@ -2142,7 +2142,7 @@ void iwl_mvm_nic_restart(struct iwl_mvm *mvm, bool fw_error)
 		}
 
 		iwl_fw_error_collect(&mvm->fwrt, false);
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 		iwl_dnt_dispatch_handle_nic_err(mvm->trans);
 #endif
 
@@ -2223,7 +2223,7 @@ static void iwl_op_mode_mvm_time_point(struct iwl_op_mode *op_mode,
 	.start = iwl_op_mode_mvm_start,				\
 	.stop = iwl_op_mode_mvm_stop,				\
 	.time_point = iwl_op_mode_mvm_time_point
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 #define IWL_MVM_COMMON_TEST_OPS					\
 	.test_ops = {						\
 		.send_hcmd = iwl_mvm_tm_send_hcmd,		\

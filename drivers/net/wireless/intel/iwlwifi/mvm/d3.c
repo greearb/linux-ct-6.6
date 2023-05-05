@@ -1318,7 +1318,7 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 	if (ret)
 		goto out;
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	if (mvm->d3_wake_sysassert)
 		d3_cfg_cmd_data.wakeup_flags |=
 			cpu_to_le32(IWL_WAKEUP_D3_CONFIG_FW_ERROR);
@@ -1338,7 +1338,7 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 	ret = iwl_mvm_send_cmd(mvm, &d3_cfg_cmd);
 	if (ret)
 		goto out;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	len = iwl_rx_packet_payload_len(d3_cfg_cmd.resp_pkt);
 	if (len >= sizeof(u32)) {
 		mvm->d3_test_pme_ptr =
@@ -2579,7 +2579,7 @@ iwl_mvm_netdetect_query_results(struct iwl_mvm *mvm,
 	results->matched_profiles = le32_to_cpu(query->matched_profiles);
 	memcpy(results->matches, query->matches, matches_len);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	mvm->last_netdetect_scans = le32_to_cpu(query->n_scans_done);
 #endif
 
@@ -2851,7 +2851,7 @@ iwl_mvm_choose_query_wakeup_reasons(struct iwl_mvm *mvm,
 		bool keep = iwl_mvm_query_wakeup_reasons(mvm, vif,
 							 d3_data->status);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		if (keep)
 			mvm->keep_vif = vif;
 #endif
@@ -2940,7 +2940,7 @@ static void iwl_mvm_nd_match_info_handler(struct iwl_mvm *mvm,
 		return;
 	}
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	mvm->last_netdetect_scans = le32_to_cpu(notif->n_scans_done);
 #endif
 
@@ -3116,7 +3116,7 @@ static int iwl_mvm_resume_firmware(struct iwl_mvm *mvm, bool test)
 	return ret;
 }
 
-#define IWL_MVM_D3_NOTIF_TIMEOUT (HZ / 5 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_MVM_D3_NOTIF_TIMEOUT (HZ / 5 * CONFIG_IWL_TIMEOUT_FACTOR)
 
 static int iwl_mvm_d3_notif_wait(struct iwl_mvm *mvm,
 				 struct iwl_d3_data *d3_data)
@@ -3315,7 +3315,7 @@ void iwl_mvm_set_wakeup(struct ieee80211_hw *hw, bool enabled)
 	device_set_wakeup_enable(mvm->trans->dev, enabled);
 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 static int iwl_mvm_d3_test_open(struct inode *inode, struct file *file)
 {
 	struct iwl_mvm *mvm = inode->i_private;

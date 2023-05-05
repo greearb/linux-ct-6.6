@@ -21,14 +21,14 @@
 #include "iwl-phy-db.h"
 #include "iwl-modparams.h"
 #include "iwl-nvm-parse.h"
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
 #include "fw/testmode.h"
 #endif
 #include "time-sync.h"
 
-#define MVM_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
-#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_ALIVE_TIMEOUT	(HZ * CONFIG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ * CONFIG_IWL_TIMEOUT_FACTOR)
 
 #define IWL_TAS_US_MCC 0x5553
 #define IWL_TAS_CANADA_MCC 0x4341
@@ -251,7 +251,7 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	alive_data->scd_base_addr = le32_to_cpu(lmac1->dbg_ptrs.scd_base_ptr);
 	alive_data->valid = status == IWL_ALIVE_STATUS_OK;
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_set_fw_ver(mvm->trans, le32_to_cpu(lmac1->ucode_major),
 			  le32_to_cpu(lmac1->ucode_minor));
 #endif
@@ -471,7 +471,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 		BIT(IWL_MAX_TID_COUNT + 2);
 
 	set_bit(IWL_MVM_STATUS_FIRMWARE_RUNNING, &mvm->status);
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	iwl_fw_set_dbg_rec_on(&mvm->fwrt);
 #endif
 
@@ -492,7 +492,7 @@ static void iwl_mvm_phy_filter_init(struct iwl_mvm *mvm,
 #ifdef CONFIG_ACPI
 	*phy_filters = mvm->phy_filters;
 #endif /* CONFIG_ACPI */
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (IWL_MVM_PHY_FILTER_CHAIN_A)
 		phy_filters->filter_cfg_chains[0] =
 			cpu_to_le32(IWL_MVM_PHY_FILTER_CHAIN_A);
@@ -557,7 +557,7 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 	enum iwl_ucode_type ucode_type = mvm->fwrt.cur_fw_img;
 	u8 cmd_ver;
 	size_t cmd_size;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	u32 override_mask, flow_override, flow_src;
 	u32 event_override, event_src;
 	const struct iwl_tlv_calib_ctrl *default_calib =
@@ -566,7 +566,7 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 
 	if (iwl_mvm_has_unified_ucode(mvm) &&
 	    !mvm->trans->cfg->tx_with_siso_diversity
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	    && !mvm->trans->dbg_cfg.MVM_CALIB_OVERRIDE_CONTROL
 #endif
 	   )
@@ -598,7 +598,7 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 	if (cmd_ver >= 3)
 		iwl_mvm_phy_filter_init(mvm, &phy_cfg_cmd.phy_specific_cfg);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	override_mask = mvm->trans->dbg_cfg.MVM_CALIB_OVERRIDE_CONTROL;
 	if (override_mask) {
 		IWL_DEBUG_INFO(mvm,
@@ -832,7 +832,7 @@ int iwl_run_init_mvm_ucode(struct iwl_mvm *mvm)
 		IWL_ERR(mvm, "Failed to start INIT ucode: %d\n", ret);
 		goto remove_notif;
 	}
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_start(mvm->trans);
 #endif
 
@@ -1162,7 +1162,7 @@ int iwl_mvm_ppag_send_cmd(struct iwl_mvm *mvm)
 static int iwl_mvm_ppag_init(struct iwl_mvm *mvm)
 {
 	/* no need to read the table, done in INIT stage */
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mvm->trans->dbg_cfg.ppag_allowed &&
 	    dmi_match(DMI_SYS_VENDOR, mvm->trans->dbg_cfg.ppag_allowed)) {
 		IWL_DEBUG_RADIO(mvm,
@@ -1281,7 +1281,7 @@ static void iwl_mvm_tas_init(struct iwl_mvm *mvm)
 	if (ret == 0)
 		return;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mvm->trans->dbg_cfg.tas_allowed &&
 	    dmi_match(DMI_SYS_VENDOR, mvm->trans->dbg_cfg.tas_allowed)) {
 		IWL_DEBUG_RADIO(mvm,
@@ -1623,7 +1623,7 @@ void iwl_mvm_send_recovery_cmd(struct iwl_mvm *mvm, u32 flags)
 
 static int iwl_mvm_sar_init(struct iwl_mvm *mvm)
 {
-#if defined(CPTCFG_IWLMVM_VENDOR_CMDS) && defined(CONFIG_ACPI)
+#if defined(CONFIG_IWLMVM_VENDOR_CMDS) && defined(CONFIG_ACPI)
 	/*
 	 * if no profile was chosen by the user yet, choose profile 1 (WRDS) as
 	 * default for both chains
@@ -1672,7 +1672,7 @@ static int iwl_mvm_load_rt_fw(struct iwl_mvm *mvm)
 	return iwl_init_paging(&mvm->fwrt, mvm->fwrt.cur_fw_img);
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_mvm_send_system_features_control(struct iwl_mvm *mvm)
 {
 	struct iwl_dbg_cfg *dbg_cfg = &mvm->trans->dbg_cfg;
@@ -1727,7 +1727,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	if (ret)
 		IWL_ERR(mvm, "Failed to initialize Smart Fifo\n");
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_start(mvm->trans);
 #endif
 
@@ -1894,7 +1894,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 			goto error;
 	}
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	/* set_mode must be IWL_TX_POWER_MODE_SET_DEVICE if this was
 	 * ever initialized.
 	 */
@@ -1923,7 +1923,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 					 len, &mvm->txp_cmd))
 			IWL_ERR(mvm, "failed to update TX power\n");
 	}
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 
 	if (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
 		iwl_mvm_send_recovery_cmd(mvm, ERROR_RECOVERY_UPDATE_DB);
@@ -1954,7 +1954,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	iwl_mvm_tas_init(mvm);
 	iwl_mvm_leds_sync(mvm);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_mvm_send_system_features_control(mvm);
 #endif
 
@@ -1984,7 +1984,7 @@ int iwl_mvm_load_d3_fw(struct iwl_mvm *mvm)
 		goto error;
 	}
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	iwl_dnt_start(mvm->trans);
 #endif
 	ret = iwl_send_tx_ant_cfg(mvm, iwl_mvm_get_valid_tx_ant(mvm));

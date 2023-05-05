@@ -550,7 +550,7 @@ u16 rs_fw_get_max_amsdu_len(struct ieee80211_sta *sta,
 	const struct ieee80211_sta_ht_cap *ht_cap = &link_sta->ht_cap;
 	const struct ieee80211_sta_eht_cap *eht_cap = &link_sta->eht_cap;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	struct ieee80211_vif *vif = iwl_mvm_sta_from_mac80211(sta)->vif;
 	struct iwl_mvm *mvm;
 
@@ -648,7 +648,7 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 	/* Enable external EHT LTF only for GL device and if there's
 	 * mutual support by AP and client
 	 */
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (!mvm->trans->dbg_cfg.eht_disable_extra_ltf)
 #endif
 	if (CSR_HW_REV_TYPE(mvm->trans->hw_rev) == IWL_CFG_MAC_TYPE_GL &&
@@ -677,13 +677,13 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 
 	rcu_read_unlock();
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	iwl_mvm_reset_frame_stats(mvm);
 #endif
 	rs_fw_set_supp_rates(vif, link_sta, sband,
 			     sband_he_cap, sband_eht_cap,
 			     &cfg_cmd);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/*
 	 * if AP disables mimo on 160bw
 	 * (!cfg_cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_160])
@@ -759,7 +759,7 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 	if (ret)
 		IWL_ERR(mvm, "Failed to send rate scale config (%d)\n", ret);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mvm->trans->dbg_cfg.ampdu_limit)
 		iwl_rs_dhc_set_ampdu_size(sta, link_sta,
 					  mvm->trans->dbg_cfg.ampdu_limit);
@@ -780,7 +780,7 @@ void iwl_mvm_rs_add_sta_link(struct iwl_mvm *mvm, struct iwl_mvm_link_sta *link_
 	lq_sta->pers.last_rssi = S8_MIN;
 	lq_sta->last_rate_n_flags = 0;
 
-#ifdef CPTCFG_MAC80211_DEBUGFS
+#ifdef CONFIG_MAC80211_DEBUGFS
 	lq_sta->pers.dbg_fixed_rate = 0;
 #endif
 }

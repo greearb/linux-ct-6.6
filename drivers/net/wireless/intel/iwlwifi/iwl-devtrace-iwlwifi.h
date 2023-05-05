@@ -132,7 +132,7 @@ TRACE_EVENT(iwlwifi_dev_ucode_event,
 		  __get_str(dev), __entry->time, __entry->data, __entry->ev)
 );
 
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	TRACE_EVENT(iwlwifi_dev_dnt_data,
 	TP_PROTO(const struct device *dev,
 		 void *dnt_data, size_t len),

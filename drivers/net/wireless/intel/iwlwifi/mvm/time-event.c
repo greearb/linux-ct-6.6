@@ -806,7 +806,7 @@ void iwl_mvm_stop_session_protection(struct iwl_mvm *mvm,
 	id = te_data->id;
 	spin_unlock_bh(&mvm->time_event_lock);
 
-#ifdef CPTCFG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
+#ifdef CONFIG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
 	if (vif->cfg.assoc) {
 		/* a good assoc, reset session_prot_fail_num */
 		mvmvif->session_prot_fail_num = 2;
@@ -878,7 +878,7 @@ void iwl_mvm_rx_session_protect_notif(struct iwl_mvm *mvm,
 			spin_lock_bh(&mvm->time_event_lock);
 			iwl_mvm_te_clear_data(mvm, te_data);
 			spin_unlock_bh(&mvm->time_event_lock);
-#ifdef CPTCFG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
+#ifdef CONFIG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
 			/*
 			 * We failed to complete the association, increase the
 			 * debug level so that we'll get more information when

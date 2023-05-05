@@ -385,7 +385,7 @@ static u32 iwl_mvm_get_tx_rate(struct iwl_mvm *mvm,
 		/* For 2.4 GHZ band, check that there is no need to remap */
 		BUILD_BUG_ON(IWL_FIRST_CCK_RATE != 0);
 
-#ifdef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
+#ifdef CONFIG_IWLWIFI_FORCE_OFDM_RATE
 		/* Force OFDM on each TX packet */
 		rate_idx = IWL_FIRST_OFDM_RATE;
 #endif
@@ -431,7 +431,7 @@ void iwl_mvm_set_tx_cmd_rate(struct iwl_mvm *mvm, struct iwl_tx_cmd *tx_cmd,
 	 * table is controlled by LINK_QUALITY commands
 	 */
 
-#ifndef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
+#ifndef CONFIG_IWLWIFI_FORCE_OFDM_RATE
 	if (likely(ieee80211_is_data(fc) && sta &&
 		   !(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))) {
 		struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
@@ -1409,7 +1409,7 @@ static void iwl_mvm_check_ratid_empty(struct iwl_mvm *mvm,
 	}
 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 const char *iwl_mvm_get_tx_fail_reason(u32 status)
 {
 #define TX_STATUS_FAIL(x) case TX_STATUS_FAIL_ ## x: return #x
@@ -1447,7 +1447,7 @@ const char *iwl_mvm_get_tx_fail_reason(u32 status)
 #undef TX_STATUS_FAIL
 #undef TX_STATUS_POSTPONE
 }
-#endif /* CPTCFG_IWLWIFI_DEBUG */
+#endif /* CONFIG_IWLWIFI_DEBUG */
 
 static int iwl_mvm_get_hwrate_chan_width(u32 chan_width)
 {
@@ -1733,11 +1733,11 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		info->status.status_driver_data[0] =
 			RS_DRV_DATA_PACK(lq_color, tx_resp->reduced_tpc);
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 		if (info->flags & IEEE80211_TX_STAT_ACK)
 			iwl_mvm_tdls_peer_cache_pkt(mvm, (void *)skb->data,
 						    skb->len, -1);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
 
 		if (likely(!iwl_mvm_time_sync_frame(mvm, skb, hdr->addr1)))
 			ieee80211_tx_status(mvm->hw, skb);
@@ -1848,7 +1848,7 @@ out:
 	rcu_read_unlock();
 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 #define AGG_TX_STATE_(x) case AGG_TX_STATE_ ## x: return #x
 static const char *iwl_get_agg_tx_status(u16 status)
 {
@@ -1903,7 +1903,7 @@ static void iwl_mvm_rx_tx_cmd_agg_dbg(struct iwl_mvm *mvm,
 static void iwl_mvm_rx_tx_cmd_agg_dbg(struct iwl_mvm *mvm,
 				      struct iwl_rx_packet *pkt)
 {}
-#endif /* CPTCFG_IWLWIFI_DEBUG */
+#endif /* CONFIG_IWLWIFI_DEBUG */
 
 static void iwl_mvm_rx_tx_cmd_agg(struct iwl_mvm *mvm,
 				  struct iwl_rx_packet *pkt)
@@ -2054,9 +2054,9 @@ static void iwl_mvm_tx_reclaim(struct iwl_mvm *mvm, int sta_id, int tid,
 				WARN_ON_ONCE(tid != IWL_MAX_TID_COUNT);
 		}
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, skb->len, -1);
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
 
 		/* this is the first skb we deliver in this batch */
 		/* put the rate scaling data there */

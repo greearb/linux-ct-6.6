@@ -22,7 +22,7 @@ int iwl_mvm_send_cmd(struct iwl_mvm *mvm, struct iwl_host_cmd *cmd)
 {
 	int ret;
 
-#if defined(CPTCFG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
 	if (WARN_ON(mvm->d3_test_active))
 		return -EIO;
 #endif
@@ -79,7 +79,7 @@ int iwl_mvm_send_cmd_status(struct iwl_mvm *mvm, struct iwl_host_cmd *cmd,
 
 	lockdep_assert_held(&mvm->mutex);
 
-#if defined(CPTCFG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_IWLWIFI_DEBUGFS) && defined(CONFIG_PM_SLEEP)
 	if (WARN_ON(mvm->d3_test_active))
 		return -EIO;
 #endif
@@ -314,7 +314,7 @@ void iwl_mvm_update_smps(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			smps_mode = IEEE80211_SMPS_DYNAMIC;
 	}
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mvmvif->link[link_id]->smps_requests[IWL_MVM_SMPS_REQ_DBG] !=
 	    IEEE80211_SMPS_AUTOMATIC)
 		smps_mode = mvmvif->link[link_id]->smps_requests[IWL_MVM_SMPS_REQ_DBG];
@@ -1212,7 +1212,7 @@ bool iwl_mvm_vif_is_active(struct iwl_mvm_vif *mvmvif)
 	return false;
 }
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 int iwl_mvm_send_csi_cmd(struct iwl_mvm *mvm)
 {
 	/*
@@ -1247,4 +1247,4 @@ int iwl_mvm_send_csi_cmd(struct iwl_mvm *mvm)
 
 	return iwl_mvm_send_cmd_pdu(mvm, id, 0, size, &cfg);
 }
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */

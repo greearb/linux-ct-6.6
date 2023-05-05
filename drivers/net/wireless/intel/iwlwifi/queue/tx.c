@@ -1764,7 +1764,7 @@ next_queue:
 	}
 }
 
-#define HOST_COMPLETE_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define HOST_COMPLETE_TIMEOUT	(2 * HZ * CONFIG_IWL_TIMEOUT_FACTOR)
 
 static int iwl_trans_txq_send_hcmd_sync(struct iwl_trans *trans,
 					struct iwl_host_cmd *cmd)

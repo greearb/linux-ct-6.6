@@ -19,7 +19,7 @@
 #include "fw/error-dump.h"
 #include "fw/api/phy-ctxt.h"
 
-#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+#ifdef CONFIG_IWLWIFI_THERMAL_DEBUGFS
 static ssize_t iwl_dbgfs_tt_tx_backoff_write(struct iwl_mvm *mvm, char *buf,
 					     size_t count, loff_t *ppos)
 {
@@ -2090,7 +2090,7 @@ iwl_dbgfs_uapsd_noagg_bssids_read(struct file *file, char __user *user_buf,
 	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
 }
 
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 static ssize_t iwl_dbgfs_tx_power_status_read(struct file *file,
 					      char __user *user_buf,
 					      size_t count, loff_t *ppos)
@@ -2383,7 +2383,7 @@ static ssize_t iwl_dbgfs_csi_addresses_write(struct iwl_mvm *mvm, char *buf,
 
 	return count;
 }
-#endif /* CPTCFG_IWLMVM_VENDOR_CMDS */
+#endif /* CONFIG_IWLMVM_VENDOR_CMDS */
 
 static ssize_t
 iwl_dbgfs_ltr_config_write(struct iwl_mvm *mvm,
@@ -2486,7 +2486,7 @@ out:
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(prph_reg, 64);
 
 /* Device wide debugfs entries */
-#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+#ifdef CONFIG_IWLWIFI_THERMAL_DEBUGFS
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tt_tx_backoff, 64);
 #endif
 MVM_DEBUGFS_READ_FILE_OPS(ctdp_budget);
@@ -2521,7 +2521,7 @@ MVM_DEBUGFS_WRITE_FILE_OPS(indirection_tbl,
 MVM_DEBUGFS_WRITE_FILE_OPS(inject_packet, 512);
 MVM_DEBUGFS_WRITE_FILE_OPS(inject_beacon_ie, 512);
 MVM_DEBUGFS_WRITE_FILE_OPS(inject_beacon_ie_restore, 512);
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 MVM_DEBUGFS_READ_FILE_OPS(tx_power_status);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(csi_enabled, 8);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(csi_count, 32);
@@ -2712,14 +2712,14 @@ void iwl_mvm_link_sta_add_debugfs(struct ieee80211_hw *hw,
 
 void iwl_mvm_dbgfs_register(struct iwl_mvm *mvm)
 {
-#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+#ifdef CONFIG_IWLWIFI_THERMAL_DEBUGFS
 	struct iwl_tt_params *tt_params = &mvm->thermal_throttle.params;
 #endif
 	struct dentry *bcast_dir __maybe_unused;
 
 	spin_lock_init(&mvm->drv_stats_lock);
 
-#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+#ifdef CONFIG_IWLWIFI_THERMAL_DEBUGFS
 	MVM_DEBUGFS_ADD_FILE(tt_tx_backoff, mvm->debugfs_dir, 0400);
 #endif
 	MVM_DEBUGFS_ADD_FILE(tx_flush, mvm->debugfs_dir, 0200);
@@ -2761,7 +2761,7 @@ void iwl_mvm_dbgfs_register(struct iwl_mvm *mvm)
 	MVM_DEBUGFS_ADD_FILE(sar_geo_profile, mvm->debugfs_dir, 0400);
 	MVM_DEBUGFS_ADD_FILE(wifi_6e_enable, mvm->debugfs_dir, 0400);
 #endif
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+#ifdef CONFIG_IWLMVM_VENDOR_CMDS
 	MVM_DEBUGFS_ADD_FILE(tx_power_status, mvm->debugfs_dir, 0400);
 
 	if (fw_has_capa(&mvm->fw->ucode_capa,
@@ -2821,7 +2821,7 @@ void iwl_mvm_dbgfs_register(struct iwl_mvm *mvm)
 	debugfs_create_blob("nvm_reg", S_IRUSR,
 			    mvm->debugfs_dir, &mvm->nvm_reg_blob);
 
-#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+#ifdef CONFIG_IWLWIFI_THERMAL_DEBUGFS
 	debugfs_create_u32("ct_kill_exit", 0600,
 			   mvm->debugfs_dir,
 			   &tt_params->ct_kill_exit);

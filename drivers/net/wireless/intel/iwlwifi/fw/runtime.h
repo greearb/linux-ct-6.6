@@ -146,15 +146,15 @@ struct iwl_fw_runtime {
 		} fw_ver;
 	} dump;
 	struct {
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 		struct delayed_work wk;
 		u32 delay;
 #endif
 		u64 seq;
 	} timestamp;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	bool tpc_enabled;
-#endif /* CPTCFG_IWLWIFI_DEBUGFS */
+#endif /* CONFIG_IWLWIFI_DEBUGFS */
 #ifdef CONFIG_ACPI
 	struct iwl_sar_profile sar_profiles[ACPI_SAR_PROFILE_NUM];
 	u8 sar_chain_a_profile;

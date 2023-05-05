@@ -140,7 +140,7 @@ int iwl_pcie_ctxt_info_gen3_init(struct iwl_trans *trans,
 	prph_sc_ctrl->step_cfg.mbx_addr_0 = cpu_to_le32(trans->mbx_addr_0_step);
 	prph_sc_ctrl->step_cfg.mbx_addr_1 = cpu_to_le32(trans->mbx_addr_1_step);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	prph_scratch->step_analog_params =
 		cpu_to_le32(trans->dbg_cfg.step_analog_params);
 #endif

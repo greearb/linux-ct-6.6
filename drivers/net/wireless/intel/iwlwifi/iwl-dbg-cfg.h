@@ -37,7 +37,7 @@ struct iwl_dbg_cfg {
 #define IWL_DBG_CFG_FN(name, fn)	/* nothing */
 
 #endif /* DBG_CFG_REINCLUDE */
-#if IS_ENABLED(CPTCFG_IWLXVT)
+#if IS_ENABLED(CONFIG_IWLXVT)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_MEM_POWER)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_LMAC_MASK)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_PRPH_MASK)
@@ -47,9 +47,9 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, disable_52GHz)
 	IWL_DBG_CFG_NODEF(bool, disable_24GHz)
 	IWL_DBG_CFG_DEF(bool, FW_MISBEHAVE_NMI,
-			CPTCFG_IWLWIFI_FW_MISBEHAVE_NMI_DEFAULT)
+			CONFIG_IWLWIFI_FW_MISBEHAVE_NMI_DEFAULT)
 	IWL_DBG_CFG_NODEF(bool, enable_dbg_asserts)
-#if IS_ENABLED(CPTCFG_IWLMVM)
+#if IS_ENABLED(CONFIG_IWLMVM)
 	IWL_DBG_CFG_NODEF(u32, MVM_CALIB_OVERRIDE_CONTROL)
 	IWL_DBG_CFG_NODEF(u32, MVM_CALIB_INIT_FLOW)
 	IWL_DBG_CFG_NODEF(u32, MVM_CALIB_INIT_EVENT)
@@ -60,7 +60,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, enable_timestamp_marker_cmd)
 #endif
 	IWL_DBG_CFG_NODEF(bool, STARTUP_RFKILL)
-#if IS_ENABLED(CPTCFG_IWLMVM)
+#if IS_ENABLED(CONFIG_IWLMVM)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_TX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_RX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_WOWLAN_PS_TX_DATA_TIMEOUT)
@@ -189,8 +189,8 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(u8, MVM_MIN_BEACON_INTERVAL_TU)
 	IWL_DBG_CFG_RANGE(u8, MVM_ADAPTIVE_DWELL_NUM_APS_OVERRIDE, 0, 10)
 	IWL_DBG_CFG_DEF(int, eml_capa_override, -1)
-#endif /* CPTCFG_IWLMVM */
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+#endif /* CONFIG_IWLMVM */
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
 	IWL_DBG_CFG_NODEF(u32, dnt_out_mode)
 	/* XXX: should be dbgm_ or dbg_mon_ for consistency? */
 	IWL_DBG_CFG_NODEF(u32, dbm_destination_path)
@@ -240,7 +240,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_base_addr_reg_addr_b_step)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_end_addr_reg_addr_b_step)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_wr_ptr_addr_b_step)
-#endif /* CPTCFG_IWLWIFI_DEVICE_TESTMODE */
+#endif /* CONFIG_IWLWIFI_DEVICE_TESTMODE */
 	IWL_DBG_CFG_BIN(hw_address)
 	IWL_DBG_CFG_STR(fw_dbg_conf)
 	IWL_DBG_CFG_STR(nvm_file)
@@ -293,12 +293,12 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, amsdu_in_ampdu_disabled)
 	IWL_DBG_CFG_NODEF(bool, disable_eml)
 	IWL_DBG_CFG_NODEF(u32, step_analog_params)
-#ifdef CPTCFG_IWLWIFI_DEBUG
+#ifdef CONFIG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
-#endif /* CPTCFG_IWLWIFI_DEBUG */
-#ifdef CPTCFG_IWLWIFI_DISALLOW_OLDER_FW
+#endif /* CONFIG_IWLWIFI_DEBUG */
+#ifdef CONFIG_IWLWIFI_DISALLOW_OLDER_FW
 	IWL_DBG_CFG_NODEF(bool, load_old_fw)
-#endif /* CPTCFG_IWLWIFI_DISALLOW_OLDER_FW */
+#endif /* CONFIG_IWLWIFI_DISALLOW_OLDER_FW */
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF

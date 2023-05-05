@@ -79,9 +79,9 @@ enum iwl_nvm_type {
 
 /* TX queue watchdog timeouts in mSecs */
 #define IWL_WATCHDOG_DISABLED	0
-#define IWL_DEF_WD_TIMEOUT	(2500 * CPTCFG_IWL_TIMEOUT_FACTOR)
-#define IWL_LONG_WD_TIMEOUT	(10000 * CPTCFG_IWL_TIMEOUT_FACTOR)
-#define IWL_MAX_WD_TIMEOUT	(120000 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_DEF_WD_TIMEOUT	(2500 * CONFIG_IWL_TIMEOUT_FACTOR)
+#define IWL_LONG_WD_TIMEOUT	(10000 * CONFIG_IWL_TIMEOUT_FACTOR)
+#define IWL_MAX_WD_TIMEOUT	(120000 * CONFIG_IWL_TIMEOUT_FACTOR)
 
 #define IWL_DEFAULT_MAX_TX_POWER 22
 #define IWL_TX_CSUM_NETIF_FLAGS (NETIF_F_IPV6_CSUM | NETIF_F_IP_CSUM |\
@@ -531,7 +531,7 @@ extern const char iwl_ax231_name[];
 extern const char iwl_ax411_name[];
 extern const char iwl_bz_name[];
 extern const char iwl_sc_name[];
-#if IS_ENABLED(CPTCFG_IWLMVM)
+#if IS_ENABLED(CONFIG_IWLMVM)
 extern const struct iwl_ht_params iwl_22000_ht_params;
 
 extern const struct iwl_cfg iwl7260_2ac_cfg;
@@ -554,8 +554,8 @@ extern const struct iwl_cfg iwl8260_2ac_cfg;
 extern const struct iwl_cfg iwl8265_2ac_cfg;
 extern const struct iwl_cfg iwl8275_2ac_cfg;
 extern const struct iwl_cfg iwl4165_2ac_cfg;
-#endif /* IS_ENABLED(CPTCFG_IWLMVM) */
-#if IS_ENABLED(CPTCFG_IWLMVM)
+#endif /* IS_ENABLED(CONFIG_IWLMVM) */
+#if IS_ENABLED(CONFIG_IWLMVM)
 extern const struct iwl_cfg iwl9260_2ac_cfg;
 extern const struct iwl_cfg iwl9560_qu_b0_jf_b0_cfg;
 extern const struct iwl_cfg iwl9560_qu_c0_jf_b0_cfg;
@@ -595,6 +595,6 @@ extern const struct iwl_cfg iwl_cfg_bz;
 extern const struct iwl_cfg iwl_cfg_gl;
 
 extern const struct iwl_cfg iwl_cfg_sc;
-#endif /* CPTCFG_IWLMVM */
+#endif /* CONFIG_IWLMVM */
 
 #endif /* __IWL_CONFIG_H__ */

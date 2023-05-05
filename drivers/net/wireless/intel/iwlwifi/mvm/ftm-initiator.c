@@ -231,7 +231,7 @@ static void iwl_mvm_ftm_cmd_v5(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	cmd->request_id = req->cookie;
 	cmd->num_of_ap = req->n_peers;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (IWL_MVM_FTM_INITIATOR_COMMON_CALIB) {
 		cmd->common_calib =
 			cpu_to_le16(IWL_MVM_FTM_INITIATOR_COMMON_CALIB);
@@ -287,7 +287,7 @@ static void iwl_mvm_ftm_cmd_common(struct iwl_mvm *mvm,
 	for (i = 0; i < ETH_ALEN; i++)
 		cmd->macaddr_mask[i] = ~req->mac_addr_mask[i];
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (IWL_MVM_FTM_INITIATOR_FAST_ALGO_DISABLE)
 		cmd->initiator_flags |=
 			cpu_to_le32(IWL_TOF_INITIATOR_FLAGS_FAST_ALGO_DISABLED);
@@ -320,7 +320,7 @@ static void iwl_mvm_ftm_cmd_v8(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 {
 	iwl_mvm_ftm_cmd_common(mvm, vif, (void *)cmd, req);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (IWL_MVM_FTM_INITIATOR_COMMON_CALIB) {
 		((struct iwl_tof_range_req_cmd_v7 *)cmd)->common_calib =
 			cpu_to_le16(IWL_MVM_FTM_INITIATOR_COMMON_CALIB);
@@ -449,7 +449,7 @@ iwl_mvm_ftm_put_target_v2(struct iwl_mvm *mvm,
 		target->location_req |= IWL_TOF_LOC_CIVIC;
 
 	target->algo_type = IWL_MVM_FTM_INITIATOR_ALGO;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	target->notify_mcsi = IWL_MVM_FTM_INITIATOR_MCSI_ENABLED;
 #endif
 
@@ -498,7 +498,7 @@ iwl_mvm_ftm_put_target_common(struct iwl_mvm *mvm,
 	    peer->ftm.lmr_feedback)
 		FTM_PUT_FLAG(LMR_FEEDBACK);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (IWL_MVM_FTM_INITIATOR_MCSI_ENABLED)
 		FTM_PUT_FLAG(MCSI_REPORT);
 #endif
@@ -691,7 +691,7 @@ static int iwl_mvm_ftm_start_v8(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	return iwl_mvm_ftm_send_cmd(mvm, &hcmd);
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_mvm_ftm_set_calib(struct iwl_mvm *mvm,
 				  struct iwl_tof_range_req_ap_entry_v6 *target)
 {
@@ -736,7 +736,7 @@ static int iwl_mvm_ftm_start_v9(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		if (err)
 			return err;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 		iwl_mvm_ftm_set_calib(mvm, target);
 #endif
 	}
@@ -814,7 +814,7 @@ iwl_mvm_ftm_put_target_v7(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	if (err)
 		return err;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_mvm_ftm_set_calib(mvm, (void *)target);
 #endif
 
@@ -960,7 +960,7 @@ static int iwl_mvm_ftm_start_v13(struct iwl_mvm *mvm,
 		target->band =
 			iwl_mvm_phy_band_from_nl80211(peer->chandef.chan->band);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 		if (IWL_MVM_FTM_LMR_FEEDBACK_TERMINATE)
 			FTM_PUT_FLAG(TERMINATE_ON_LMR_FEEDBACK);
 #endif

@@ -270,7 +270,7 @@ int iwl_mvm_mac_ctxt_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		goto exit_fail;
 	}
 
-#ifdef CPTCFG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
+#ifdef CONFIG_IWLWIFI_DEBUG_SESSION_PROT_FAIL
 	/* The third failure will send a udev event to user space */
 	mvmvif->session_prot_fail_num = 2;
 #endif
@@ -636,7 +636,7 @@ __le32 iwl_mvm_mac_ctxt_cmd_p2p_sta_get_oppps_ctwin(struct iwl_mvm *mvm,
 	struct ieee80211_p2p_noa_attr *noa =
 		&vif->bss_conf.p2p_noa_attr;
 
-#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
+#ifdef CONFIG_IWLMVM_P2P_OPPPS_TEST_WA
 	/*
 		* Pass CT window including OPPPS enable flag as part of a WA
 		* to pass P2P OPPPS certification test. Refer to
@@ -956,7 +956,7 @@ u8 iwl_mvm_mac_ctxt_get_lowest_rate(struct iwl_mvm *mvm,
 	} else {
 		rate = IWL_RATE_6M_INDEX;
 	}
-#ifdef CPTCFG_IWLWIFI_FORCE_OFDM_RATE
+#ifdef CONFIG_IWLWIFI_FORCE_OFDM_RATE
 	rate = IWL_FIRST_OFDM_RATE;
 #endif
 	return rate;
@@ -1218,7 +1218,7 @@ int iwl_mvm_mac_ctxt_beacon_changed(struct iwl_mvm *mvm,
 	if (!beacon)
 		return -ENOMEM;
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#ifdef CONFIG_IWLWIFI_DEBUGFS
 	if (mvm->beacon_inject_active) {
 		dev_kfree_skb(beacon);
 		return -EBUSY;

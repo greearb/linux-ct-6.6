@@ -402,7 +402,7 @@ void iwl_mvm_tt_handler(struct iwl_mvm *mvm)
 		return;
 	}
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (params->support_dynamic_smps && !mvm->trans->dbg_cfg.smps_disabled) {
 #else
 	if (params->support_dynamic_smps) {

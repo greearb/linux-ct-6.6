@@ -225,7 +225,7 @@ free:
 	return retval;
 }
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 static int iwl_vendor_tdls_peer_cache_add(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
 					  const void *data, int data_len)
@@ -392,7 +392,7 @@ static int iwl_vendor_tdls_peer_cache_query(struct wiphy *wiphy,
 
 	return cfg80211_vendor_cmd_reply(skb);
 }
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
 
 enum iwl_rfi_capabilites {
 	IWL_MVM_RFI_DDR_CAPA_CNVI	= BIT(2),
@@ -651,7 +651,7 @@ free:
 	return err;
 }
 
-#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
+#ifdef CONFIG_IWLMVM_P2P_OPPPS_TEST_WA
 static int iwl_mvm_oppps_wa_update_quota(struct iwl_mvm *mvm,
 					 struct ieee80211_vif *vif,
 					 bool enable)
@@ -1725,7 +1725,7 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 	{
 		.info = {
 			.vendor_id = INTEL_OUI,
@@ -1759,7 +1759,7 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
 	{
 		.info = {
 			.vendor_id = INTEL_OUI,
@@ -1770,7 +1770,7 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},
-#ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
+#ifdef CONFIG_IWLMVM_P2P_OPPPS_TEST_WA
 	{
 		.info = {
 			.vendor_id = INTEL_OUI,

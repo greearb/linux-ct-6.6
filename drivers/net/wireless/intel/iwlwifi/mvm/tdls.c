@@ -672,7 +672,7 @@ retry:
 	mutex_unlock(&mvm->mutex);
 }
 
-#ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
+#ifdef CONFIG_IWLMVM_TDLS_PEER_CACHE
 void iwl_mvm_tdls_peer_cache_pkt(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
 				 u32 len, int rxq)
 {
@@ -743,4 +743,4 @@ iwl_mvm_tdls_peer_cache_find(struct iwl_mvm *mvm, const u8 *addr)
 
 	return cnt;
 }
-#endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+#endif /* CONFIG_IWLMVM_TDLS_PEER_CACHE */
