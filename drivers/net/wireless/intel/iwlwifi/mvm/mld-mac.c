@@ -52,7 +52,7 @@ static void iwl_mvm_mld_mac_ctxt_cmd_common(struct iwl_mvm *mvm,
 	 * the association response successfully, so just skip all that
 	 * and enable both when we have MLO.
 	 */
-	if (ieee80211_vif_is_mld(vif)) {
+	if (vif->valid_links) {
 		iwl_mvm_mld_set_he_support(mvm, vif, cmd);
 		cmd->eht_support = cpu_to_le32(1);
 		return;
@@ -98,7 +98,7 @@ static int iwl_mvm_mld_mac_ctxt_cmd_sta(struct iwl_mvm *mvm,
 					u32 action, bool force_assoc_off)
 {
 	struct iwl_mac_config_cmd cmd = {};
-	u16 esr_transition_timeout;
+	//u16 esr_transition_timeout;
 
 	WARN_ON(vif->type != NL80211_IFTYPE_STATION);
 
@@ -136,6 +136,7 @@ static int iwl_mvm_mld_mac_ctxt_cmd_sta(struct iwl_mvm *mvm,
 	}
 
 	cmd.client.assoc_id = cpu_to_le16(vif->cfg.aid);
+#if 0 /* TODO BEN */
 	if (ieee80211_vif_is_mld(vif)) {
 		esr_transition_timeout =
 			u16_get_bits(vif->cfg.eml_cap,
@@ -147,6 +148,7 @@ static int iwl_mvm_mld_mac_ctxt_cmd_sta(struct iwl_mvm *mvm,
 		cmd.client.medium_sync_delay =
 			cpu_to_le16(vif->cfg.eml_med_sync_delay);
 	}
+#endif
 
 	if (vif->probe_req_reg && vif->cfg.assoc && vif->p2p)
 		cmd.filter_flags |= cpu_to_le32(MAC_CFG_FILTER_ACCEPT_PROBE_REQ);

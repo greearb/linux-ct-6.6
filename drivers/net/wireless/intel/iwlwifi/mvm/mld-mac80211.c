@@ -118,9 +118,11 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 	}
 
 #ifdef CONFIG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#if 0 /* TODO BEN */
 	if (vif->type == NL80211_IFTYPE_STATION &&
 	    mvm->trans->dbg_cfg.disable_eml)
 		vif->driver_flags |= IEEE80211_VIF_DISABLE_EML;
+#endif
 #endif
 
 	goto out_unlock;
@@ -268,6 +270,7 @@ static int iwl_mvm_esr_mode_active(struct iwl_mvm *mvm,
 
 	/* Disable SMPS overrideing by user */
 	vif->driver_flags |= IEEE80211_VIF_DISABLE_SMPS_OVERRIDE;
+
 #ifdef CONFIG_IWLWIFI_DEBUGFS
 	/* Disable RLC overriding by user */
 	mvm->dbgfs_rx_phyinfo = 0;
@@ -428,7 +431,9 @@ static int iwl_mvm_esr_mode_inactive(struct iwl_mvm *mvm,
 
 	mvmvif->esr_active = false;
 
+#if 0 /* TODO BEN */
 	vif->driver_flags &= ~IEEE80211_VIF_DISABLE_SMPS_OVERRIDE;
+#endif
 
 	iwl_mvm_update_smps_on_active_links(mvm, vif, IWL_MVM_SMPS_REQ_FW,
 					    IEEE80211_SMPS_AUTOMATIC);

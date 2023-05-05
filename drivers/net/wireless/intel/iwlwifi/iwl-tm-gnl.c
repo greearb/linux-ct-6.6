@@ -374,13 +374,13 @@ static int iwl_tm_gnl_get_build_info(struct iwl_trans *trans,
 	resp = (struct iwl_tm_build_info *)data_out->data;
 
 	memset(resp, 0 , sizeof(*resp));
-	strncpy(resp->driver_version, BACKPORTS_GIT_TRACKED,
+	strncpy(resp->driver_version, __AX200_VER,
 		sizeof(resp->driver_version));
 #ifdef BACKPORTS_BRANCH_TSTAMP
 	strncpy(resp->branch_time, BACKPORTS_BRANCH_TSTAMP,
 		sizeof(resp->branch_time));
 #endif
-	strncpy(resp->build_time, BACKPORTS_BUILD_TSTAMP,
+	strncpy(resp->build_time, "unknown", /*BACKPORTS_BUILD_TSTAMP, */
 		sizeof(resp->build_time));
 
 	return 0;
@@ -1072,20 +1072,14 @@ static int iwl_tm_gnl_cmd_subscribe(struct sk_buff *skb, struct genl_info *info)
 static const struct genl_ops iwl_tm_gnl_ops[] = {
 	{
 	  .cmd = IWL_TM_GNL_CMD_EXECUTE,
-#if LINUX_VERSION_IS_GEQ(5,2,0)
 	  .validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
-#endif
-
 	  .doit = iwl_tm_gnl_cmd_do,
 	  .dumpit = iwl_tm_gnl_dump,
 	  .done = iwl_tm_gnl_done,
 	},
 	{
 		.cmd = IWL_TM_GNL_CMD_SUBSCRIBE_EVENTS,
-#if LINUX_VERSION_IS_GEQ(5,2,0)
 		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
-#endif
-
 		.doit = iwl_tm_gnl_cmd_subscribe,
 	},
 };
@@ -1099,9 +1093,7 @@ static struct genl_family iwl_tm_gnl_family __genl_ro_after_init = {
 	.module		= THIS_MODULE,
 	.ops		= iwl_tm_gnl_ops,
 	.n_ops		= ARRAY_SIZE(iwl_tm_gnl_ops),
-#if LINUX_VERSION_IS_GEQ(6,1,0)
 	.resv_start_op  = IWL_TM_GNL_CMD_SUBSCRIBE_EVENTS + 1,
-#endif
 	.mcgrps		= iwl_tm_gnl_mcgrps,
 	.n_mcgrps	= ARRAY_SIZE(iwl_tm_gnl_mcgrps),
 };

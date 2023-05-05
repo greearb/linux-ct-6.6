@@ -13,6 +13,16 @@
 #include <linux/nl80211.h>
 #include "iwl-csr.h"
 
+/* Backports related stuff to make it work in 5.10 kernel */
+#define __AX200_VER "may3-master-ct"
+#define kzfree kfree_sensitive
+#define CONFIG_IWL_TIMEOUT_FACTOR 1 /* Factor to multiple timeouts by, default is 1 in ax200 backports Kconfig */
+#define genl_info_snd_portid(__genl_info) (__genl_info->snd_portid)
+#define netlink_notify_portid(__notify) (__notify->portid)
+#define NETLINK_CB_PORTID(__skb) NETLINK_CB(__skb).portid
+#define __genl_ro_after_init __ro_after_init
+#define ktime_get_boot_ns ktime_get_boottime_ns
+
 enum iwl_device_family {
 	IWL_DEVICE_FAMILY_UNDEFINED,
 	IWL_DEVICE_FAMILY_1000,

@@ -139,7 +139,7 @@ static int iwl_tm_get_dev_info(struct iwl_testmode *testmode,
 			       struct iwl_tm_data *data_out)
 {
 	struct iwl_tm_dev_info *dev_info;
-	const u8 driver_ver[] = BACKPORTS_GIT_TRACKED;
+	const u8 driver_ver[] = __AX200_VER;
 
 	dev_info = kzalloc(sizeof(*dev_info) + (strlen(driver_ver) + 1) *
 			   sizeof(u8), GFP_KERNEL);

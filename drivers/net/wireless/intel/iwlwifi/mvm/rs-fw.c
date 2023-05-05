@@ -625,9 +625,11 @@ void iwl_mvm_rs_fw_rate_init(struct iwl_mvm *mvm,
 	struct ieee80211_supported_band *sband = hw->wiphy->bands[band];
 	u16 max_amsdu_len = rs_fw_get_max_amsdu_len(sta, link_conf, link_sta);
 	const struct ieee80211_sta_he_cap *sband_he_cap =
-		ieee80211_get_he_iftype_cap_vif(sband, vif);
+		ieee80211_get_he_iftype_cap(sband,
+                                            ieee80211_vif_type_p2p(vif));
 	const struct ieee80211_sta_eht_cap *sband_eht_cap =
-		ieee80211_get_eht_iftype_cap_vif(sband, vif);
+		ieee80211_get_eht_iftype_cap(sband,
+                                            ieee80211_vif_type_p2p(vif));
 	struct iwl_mvm_link_sta *mvm_link_sta;
 	struct iwl_lq_sta_rs_fw *lq_sta;
 	struct iwl_tlc_config_cmd_v4 cfg_cmd = {

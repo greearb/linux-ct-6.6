@@ -6,7 +6,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 
-#include "iwl-drv.h"
+#include <iwl-drv.h>
 #include "iwl-trans.h"
 #include "iwl-op-mode.h"
 #include "fw/img.h"

@@ -6,7 +6,7 @@
 #ifndef __sap_h__
 #define __sap_h__
 
-#include "mei/iwl-mei.h"
+#include "iwl-mei.h"
 
 /**
  * DOC: Introduction
