@@ -273,11 +273,16 @@ enum mt76_phy_type {
 struct mt76_sta_stats {
 	u64 tx_mode[__MT_PHY_TYPE_MAX];
 	u64 tx_bw[5];		/* 20, 40, 80, 160, 320 */
-	unsigned long tx_mpdu_attempts; /* counting any retries */
-	unsigned long tx_mpdu_fail; /* frames that failed even after retry */
+	unsigned long tx_mpdu_attempts; /* counting any retries (all frames) */
+	unsigned long tx_mpdu_fail; /* frames that failed even after retry (all frames)*/
 	/* frames that succeeded, perhaps after retry */
-	unsigned long tx_mpdu_ok;
-	unsigned long tx_mpdu_retry; /* number of times frames were retried */
+	unsigned long tx_mpdu_ok; /* all frames */
+	unsigned long tx_mpdu_retry; /* number of times frames were retried (all frames) */
+
+	unsigned long txo_tx_mpdu_attempts; /* counting any retries, txo frames */
+	unsigned long txo_tx_mpdu_fail; /* frames that failed even after retry, txo frames */
+	unsigned long txo_tx_mpdu_ok; /* tx frames */
+	unsigned long txo_tx_mpdu_retry; /* number of times frames were retried, txo frames */
 
 	u64 tx_nss[4];		/* 1, 2, 3, 4 */
 	u64 tx_mcs[16];		/* mcs idx */
@@ -404,6 +409,7 @@ struct mt76_rx_tid {
 #define MT_TX_CB_DMA_DONE		BIT(0)
 #define MT_TX_CB_TXS_DONE		BIT(1)
 #define MT_TX_CB_TXS_FAILED		BIT(2)
+#define MT_TX_CB_TXO_USED		BIT(3)
 
 #define MT_PACKET_ID_MASK		GENMASK(6, 0)
 #define MT_PACKET_ID_NO_ACK		0

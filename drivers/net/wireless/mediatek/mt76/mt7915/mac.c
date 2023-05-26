@@ -691,6 +691,9 @@ mt7915_mac_write_txwi_tm(struct mt7915_phy *phy, struct mt76_wcid *wcid, __le32 
 	msta = container_of(wcid, struct mt7915_sta, wcid);
 
 	if (msta->test.txo_active) {
+		struct mt76_tx_cb *cb = mt76_tx_skb_cb(skb);
+
+		cb->flags |= MT_TX_CB_TXO_USED;
 		td = &msta->test;
 	} else {
 		if (skb != phy->mt76->test.tx_skb)
@@ -1078,6 +1081,7 @@ mt7915_txwi_free(struct mt7915_dev *dev, struct mt76_txwi_cache *t,
 	 */
 	if (wcid) {
 		struct mt76_sta_stats *stats = &wcid->stats;
+		struct mt76_tx_cb *cb = mt76_tx_skb_cb(t->skb);
 
 		if (wcid->rate.flags & RATE_INFO_FLAGS_MCS) {
 			rate->flags |= IEEE80211_TX_RC_MCS;
@@ -1110,6 +1114,16 @@ mt7915_txwi_free(struct mt7915_dev *dev, struct mt76_txwi_cache *t,
 			stats->tx_mpdu_ok++;
 		else
 			stats->tx_mpdu_fail++;
+
+		if (cb->flags & MT_TX_CB_TXO_USED) {
+			stats->txo_tx_mpdu_attempts += tx_cnt;
+			stats->txo_tx_mpdu_retry += tx_cnt - 1;
+
+			if (tx_status == 0)
+				stats->txo_tx_mpdu_ok++;
+			else
+				stats->txo_tx_mpdu_fail++;
+		}
 	}
 
 	rcu_read_unlock();
