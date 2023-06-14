@@ -1054,6 +1054,7 @@ mt7921_set_antenna(struct ieee80211_hw *hw, u32 tx_ant, u32 rx_ant)
 	phy->mt76->chainmask = tx_ant;
 
 	mt76_set_stream_caps(phy->mt76, true);
+	mt7921_set_stream_vht_txbf_caps(phy);
 	mt7921_set_stream_he_caps(phy);
 
 	mt792x_mutex_release(dev);
