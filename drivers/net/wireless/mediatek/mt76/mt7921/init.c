@@ -408,6 +408,28 @@ static int mt7921_init_wcid(struct mt7921_dev *dev)
 	return 0;
 }
 
+void mt7921_set_stream_vht_txbf_caps(struct mt7921_phy *phy)
+{
+	int sts;
+	u32 *cap;
+
+	if (!phy->mt76->cap.has_5ghz)
+		return;
+
+	sts = hweight8(phy->mt76->chainmask);
+	cap = &phy->mt76->sband_5g.sband.vht_cap.cap;
+
+	*cap &= ~(IEEE80211_VHT_CAP_BEAMFORMEE_STS_MASK |
+		  IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK |
+		  IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE |
+		  IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE);
+
+	*cap |= IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE |
+		IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE |
+		FIELD_PREP(IEEE80211_VHT_CAP_BEAMFORMEE_STS_MASK,
+			   sts - 1);
+}
+
 static void mt7921_init_work(struct work_struct *work)
 {
 	struct mt7921_dev *dev = container_of(work, struct mt7921_dev,
@@ -419,6 +441,7 @@ static void mt7921_init_work(struct work_struct *work)
 		return;
 
 	mt76_set_stream_caps(&dev->mphy, true);
+	mt7921_set_stream_vht_txbf_caps(&dev->phy);
 	mt7921_set_stream_he_caps(&dev->phy);
 
 	ret = mt76_register_device(&dev->mt76, true, mt76_rates,
