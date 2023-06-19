@@ -337,8 +337,10 @@ static int mt7921_pci_probe(struct pci_dev *pdev,
 	dev->mt76.bus = bus_ops;
 
 	ret = mt7921e_mcu_fw_pmctrl(dev);
-	if (ret)
+	if (ret) {
+		dev_info(mdev->dev, "__mt7921e_mcu_fw_pmctrl failed: %d\n", ret);
 		goto err_free_dev;
+	}
 
 	ret = __mt7921e_mcu_drv_pmctrl(dev);
 	if (ret) {
@@ -351,8 +353,10 @@ static int mt7921_pci_probe(struct pci_dev *pdev,
 	dev_info(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
 
 	ret = mt7921_wfsys_reset(dev);
-	if (ret)
+	if (ret) {
+		dev_info(mdev->dev, "mt7921_wfsys_reset failed: %d\n", ret);
 		goto err_free_dev;
+	}
 
 	mt76_wr(dev, MT_WFDMA0_HOST_INT_ENA, 0);
 
