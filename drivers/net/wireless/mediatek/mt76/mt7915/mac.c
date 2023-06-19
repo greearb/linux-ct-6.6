@@ -1110,11 +1110,16 @@ mt7915_txwi_free(struct mt7915_dev *dev, struct mt76_txwi_cache *t,
 
 		stats->tx_mpdu_attempts += tx_cnt;
 		stats->tx_mpdu_retry += tx_cnt - 1;
+		stats->tx_retries += tx_cnt - 1;
 
-		if (tx_status == 0)
+		if (tx_status == 0) {
 			stats->tx_mpdu_ok++;
-		else
+			stats->tx_bytes += t->skb->len;
+			stats->tx_packets++;
+		} else {
 			stats->tx_mpdu_fail++;
+			wcid->stats.tx_failed++;
+		}
 
 		if (cb->flags & MT_TX_CB_TXO_USED) {
 			stats->txo_tx_mpdu_attempts += tx_cnt;
@@ -1138,6 +1143,7 @@ mt7915_txwi_free(struct mt7915_dev *dev, struct mt76_txwi_cache *t,
 		info->status.ampdu_ack_len = 1;
 	} else {
 		info->flags &= ~IEEE80211_TX_STAT_ACK;
+		info->status.ampdu_ack_len = 0;
 	}
 
 	__mt76_tx_complete_skb(mdev, wcid_idx, t->skb, free_list);

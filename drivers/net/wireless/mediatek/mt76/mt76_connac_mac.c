@@ -622,16 +622,6 @@ bool mt76_connac2_mac_fill_txs(struct mt76_dev *dev, struct mt76_wcid *wcid,
 
 	/* PPDU based reporting */
 	if (FIELD_GET(MT_TXS0_TXS_FORMAT, txs) > 1) {
-		stats->tx_bytes +=
-			le32_get_bits(txs_data[5], MT_TXS5_MPDU_TX_BYTE) -
-			le32_get_bits(txs_data[7], MT_TXS7_MPDU_RETRY_BYTE);
-		stats->tx_packets +=
-			le32_get_bits(txs_data[5], MT_TXS5_MPDU_TX_CNT);
-		stats->tx_failed +=
-			le32_get_bits(txs_data[6], MT_TXS6_MPDU_FAIL_CNT);
-		stats->tx_retries +=
-			le32_get_bits(txs_data[7], MT_TXS7_MPDU_RETRY_CNT);
-
 		if (wcid->sta) {
 			struct ieee80211_sta *sta;
 			u8 tid;
@@ -774,14 +764,10 @@ bool mt76_connac2_mac_add_txs_skb(struct mt76_dev *dev, struct mt76_wcid *wcid,
 		info->status.ampdu_ack_len = !noacked;
 		info->status.rates[0].idx = -1;
 
-		wcid->stats.tx_failed += noacked;
-
 		mt76_connac2_mac_fill_txs(dev, wcid, txs_data, info);
 		mt76_tx_status_skb_done(dev, skb, &list);
 	} else {
 		/* txs for no SKB path */
-		if (le32_to_cpu(txs_data[0]) & MT_TXS0_ACK_ERROR_MASK)
-			wcid->stats.tx_failed++;
 		mt76_connac2_mac_fill_txs(dev, wcid, txs_data, NULL);
 	}
 	mt76_tx_status_unlock(dev, &list);
