@@ -692,6 +692,10 @@ mt7915_mac_write_txwi_tm(struct mt7915_phy *phy, struct mt76_wcid *wcid, __le32 
 
 	if (msta->test.txo_active) {
 		struct mt76_tx_cb *cb = mt76_tx_skb_cb(skb);
+		struct mt7915_dev *dev = phy->dev;
+
+		mtk_dbg(&dev->mt76, TX, "mt7915-write-txwi-tm, skb: %p skb->len: %d\n",
+			skb, skb->len);
 
 		cb->flags |= MT_TX_CB_TXO_USED;
 		td = &msta->test;
@@ -1111,6 +1115,9 @@ mt7915_txwi_free(struct mt7915_dev *dev, struct mt76_txwi_cache *t,
 		stats->tx_mpdu_attempts += tx_cnt;
 		stats->tx_mpdu_retry += tx_cnt - 1;
 		stats->tx_retries += tx_cnt - 1;
+
+		mtk_dbg(&dev->mt76, TX, "mt7915-txwi-free, skb: %p skb->len: %d tx-cnt: %d  tx_status: 0x%x  txo: %d\n",
+			t->skb, t->skb->len, tx_cnt, tx_status, !!(cb->flags & MT_TX_CB_TXO_USED));
 
 		if (tx_status == 0) {
 			stats->tx_mpdu_ok++;
