@@ -429,4 +429,7 @@ int mt76_connac2_mac_fill_rx_rate(struct mt76_dev *dev,
 				  struct mt76_mib_stats *mib,
 				  struct mt76_sta_stats *stats);
 
+/* connac3 */
+void mt76_connac3_mac_decode_he_radiotap(struct sk_buff *skb, __le32 *rxv,
+					 u8 mode);
 #endif /* __MT76_CONNAC_H */
