@@ -367,6 +367,8 @@ struct mt76_wcid {
 
 	struct mt76_sta_stats stats;
 	unsigned long last_idr_check_at; /* in jiffies */
+
+	struct list_head poll_list;
 };
 
 struct mt76_txq {
