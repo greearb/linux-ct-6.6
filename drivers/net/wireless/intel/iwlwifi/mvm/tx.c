@@ -9,6 +9,7 @@
 #include <linux/tcp.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
+#include <net/gso.h>
 
 #include "iwl-trans.h"
 #include "iwl-eeprom-parse.h"
