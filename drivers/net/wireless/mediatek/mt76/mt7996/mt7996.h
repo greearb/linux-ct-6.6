@@ -130,6 +130,128 @@ struct mt7996_vif {
 	struct cfg80211_bitrate_mask bitrate_mask;
 };
 
+/* per-phy stats.  */
+struct mib_stats {
+	struct mt76_mib_stats common;
+
+	/* phy wide driver stats */
+	u32 tx_pkts_nic; /* tx OK skb */
+	u32 tx_bytes_nic; /* tx OK bytes */
+	u32 rx_pkts_nic; /* rx OK skb */
+	u32 rx_bytes_nic; /* rx OK bytes */
+
+	/* MIB counters from FW/HW */
+	u32 ack_fail_cnt;
+	u32 fcs_err_cnt;
+	u32 rts_cnt;
+	u32 rts_retries_cnt;
+	u32 ba_miss_cnt;
+	u32 tx_mu_bf_cnt;
+	u32 tx_mu_mpdu_cnt;
+	u32 tx_mu_acked_mpdu_cnt;
+	u32 tx_su_acked_mpdu_cnt;
+	u32 tx_bf_ibf_ppdu_cnt;
+	u32 tx_bf_ebf_ppdu_cnt;
+
+	u32 tx_bf_rx_fb_all_cnt;
+	u32 tx_bf_rx_fb_he_cnt;
+	u32 tx_bf_rx_fb_vht_cnt;
+	u32 tx_bf_rx_fb_ht_cnt;
+	u32 tx_bf_rx_fb_eht_cnt;
+
+	u32 tx_bf_rx_fb_bw; /* value of last sample, not cumulative */
+	u32 tx_bf_rx_fb_nc_cnt;
+	u32 tx_bf_rx_fb_nr_cnt;
+	u32 tx_bf_fb_cpl_cnt;
+	u32 tx_bf_fb_trig_cnt;
+
+	u32 tx_ampdu_cnt;
+	u32 tx_stop_q_empty_cnt;
+	u32 tx_mpdu_attempts_cnt;
+	u32 tx_mpdu_success_cnt;
+	u32 tx_pkt_ebf_cnt;
+	u32 tx_pkt_ibf_cnt;
+
+	u32 tx_rwp_fail_cnt;
+	u32 tx_rwp_need_cnt;
+	u32 tx_mgt_frame_cnt;
+	u32 tx_mgt_frame_retry_cnt;
+	u32 tx_data_frame_retry_cnt;
+	u32 tx_drop_rts_retry_fail_cnt;
+	u32 tx_drop_mpdu_retry_fail_cnt;
+	u32 tx_drop_lto_limit_fail_cnt;
+	u32 tx_dbnss_cnt;
+
+	/* rx stats */
+	u32 rx_fifo_full_cnt;
+	u32 rx_oor_cnt;
+	u32 channel_idle_cnt;
+	u32 primary_cca_busy_time;
+	u32 secondary_cca_busy_time;
+	u32 primary_energy_detect_time;
+	u32 cck_mdrdy_time;
+	u32 ofdm_mdrdy_time;
+	u32 green_mdrdy_time;
+	u32 rx_vector_mismatch_cnt;
+	u32 rx_delimiter_fail_cnt;
+	u32 rx_mrdy_cnt;
+	u32 rx_len_mismatch_cnt;
+	u32 rx_mpdu_cnt;
+	u32 rx_ampdu_cnt;
+	u32 rx_ampdu_bytes_cnt;
+	u32 rx_ampdu_valid_subframe_cnt;
+	u32 rx_ampdu_valid_subframe_bytes_cnt;
+	u32 rx_pfdrop_cnt;
+	u32 rx_vec_queue_overflow_drop_cnt;
+	u32 rx_ba_cnt;
+
+	u32 tx_amsdu[8];
+	u32 tx_amsdu_cnt;
+
+	u32 rx_partial_beacon_cnt;
+	u32 rx_oppo_ps_rx_dis_drop_cnt;
+	u32 rx_fcs_ok_cnt;
+
+	/* rx stats from the driver */
+	u32 rx_d_skb; /* total skb received in rx path */
+	u32 rx_d_rxd2_amsdu_err;
+	u32 rx_d_null_channels;
+	u32 rx_d_max_len_err;
+	u32 rx_d_too_short;
+
+	/* mcu_muru_stats */
+	u32 rx_cck_cnt;
+	u32 rx_ofdm_cnt;
+	u32 rx_htmix_cnt;
+	u32 rx_htgf_cnt;
+	u32 rx_vht_su_cnt;
+	u32 rx_vht_2mu_cnt;
+	u32 rx_vht_3mu_cnt;
+	u32 rx_vht_4mu_cnt;
+	u32 rx_he_su_cnt;
+	u32 rx_he_ext_su_cnt;
+	u32 rx_he_2ru_cnt;
+	u32 rx_he_2mu_cnt;
+	u32 rx_he_3ru_cnt;
+	u32 rx_he_3mu_cnt;
+	u32 rx_he_4ru_cnt;
+	u32 rx_he_4mu_cnt;
+	u32 rx_he_5to8ru_cnt;
+	u32 rx_he_9to16ru_cnt;
+	u32 rx_he_gtr16ru_cnt;
+
+	u32 tx_hetrig_su_cnt;
+	u32 tx_hetrig_2ru_cnt;
+	u32 tx_hetrig_3ru_cnt;
+	u32 tx_hetrig_4ru_cnt;
+	u32 tx_hetrig_5to8ru_cnt;
+	u32 tx_hetrig_9to16ru_cnt;
+	u32 tx_hetrig_gtr16ru_cnt;
+	u32 tx_hetrig_2mu_cnt;
+	u32 tx_hetrig_3mu_cnt;
+	u32 tx_hetrig_4mu_cnt;
+};
+
 /* crash-dump */
 struct mt7996_crash_data {
 	guid_t guid;
@@ -168,7 +290,7 @@ struct mt7996_phy {
 	u32 rx_ampdu_ts;
 	u32 ampdu_ref;
 
-	struct mt76_mib_stats mib;
+	struct mib_stats mib;
 	struct mt76_channel_state state_ts;
 };
 

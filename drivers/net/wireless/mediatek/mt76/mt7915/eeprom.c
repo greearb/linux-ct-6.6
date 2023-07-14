@@ -58,9 +58,6 @@ static char *mt7915_eeprom_name(struct mt7915_dev *dev)
 		else
 			return dev->dbdc_support ?
 				MT7915_EEPROM_DEFAULT_DBDC : MT7915_EEPROM_DEFAULT;
-	case 0x7915:
-		return dev->dbdc_support ?
-		       MT7915_EEPROM_DEFAULT_DBDC : MT7915_EEPROM_DEFAULT;
 	case 0x7981:
 		/* mt7981 only supports mt7976 and only in DBDC mode */
 		return MT7981_EEPROM_MT7976_DEFAULT_DBDC;
