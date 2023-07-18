@@ -350,6 +350,7 @@ struct mt7996_dev {
 	struct list_head twt_list;
 
 	u32 hw_pattern;
+	u32 ignore_radar; /* skip propagating up the stack, for debugging */
 
 	bool dbdc_support:1;
 	bool tbtc_support:1;
