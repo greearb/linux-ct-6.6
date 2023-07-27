@@ -345,6 +345,7 @@ struct mt76_wcid {
 	struct rate_info rate;
 	bool rate_short_gi; /* cached HT/VHT short_gi, from mac_sta_poll() */
 	u8 rate_he_gi; /* cached HE GI, from mac_sta_poll() */
+	u8 rate_eht_gi; /* cached EHT GI, from mac_sta_poll() */
 	unsigned long ampdu_state;
 
 	u16 idx;
