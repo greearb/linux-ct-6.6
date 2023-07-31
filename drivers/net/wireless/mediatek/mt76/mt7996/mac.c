@@ -1375,7 +1375,7 @@ mt7996_txwi_free(struct mt7996_dev *dev, struct mt76_txwi_cache *t,
 		 u32 tx_cnt, u32 tx_status, u32 ampdu)
 {
 	struct mt76_dev *mdev = &dev->mt76;
-	struct mt76_wcid *wcid;
+	struct mt76_wcid *wcid = NULL;
 	__le32 *txwi;
 	u16 wcid_idx;
 	struct ieee80211_tx_info *info;
