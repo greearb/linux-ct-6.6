@@ -450,7 +450,7 @@ u16 rs_fw_get_max_amsdu_len(struct ieee80211_sta *sta,
 			    struct ieee80211_bss_conf *link_conf,
 			    struct ieee80211_link_sta *link_sta);
 
-int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data);
+int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data, u32 data2);
 
 static inline int iwl_rs_dhc_set_ampdu_size(struct ieee80211_sta *sta,
 					    struct ieee80211_link_sta *link_sta,

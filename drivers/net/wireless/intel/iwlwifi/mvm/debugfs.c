@@ -516,7 +516,7 @@ static int iwl_rs_set_fixed_rate(struct iwl_mvm *mvm,
 	u32 type = partial ? IWL_TLC_DEBUG_PARTIAL_FIXED_RATE :
 			     IWL_TLC_DEBUG_FIXED_RATE;
 	int ret = iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id, type,
-				  lq_sta->pers.dbg_fixed_rate);
+				  lq_sta->pers.dbg_fixed_rate, 0);
 
 	char pretty_rate[100];
 
@@ -562,7 +562,7 @@ static void iwl_rs_disable_rts(struct iwl_mvm *mvm,
 {
 	if (iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id,
 			    IWL_TLC_DEBUG_RTS_DISABLE,
-			    rts_disable))
+			    rts_disable, 0))
 		return;
 
 	IWL_DEBUG_RATE(mvm, "sta_id %d rts disable 0x%X\n",
@@ -595,15 +595,15 @@ static ssize_t iwl_dbgfs_tlc_dhc_write(struct ieee80211_link_sta *link_sta,
 				       loff_t *ppos)
 {
 	struct iwl_lq_sta_rs_fw *lq_sta = &mvm_link_sta->lq_sta.rs_fw;
-	u32 type, value;
+	u32 type, value, val2 = 0;
 	int ret;
 
-	if (sscanf(buf, "%i %i", &type, &value) != 2) {
-		IWL_DEBUG_RATE(mvm, "usage <type> <value>\n");
+	if (sscanf(buf, "%i %i %i", &type, &value, &val2) < 2) {
+		IWL_DEBUG_RATE(mvm, "usage <type> <value> <value2>\n");
 		return -EINVAL;
 	}
 
-	ret = iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id, type, value);
+	ret = iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id, type, value, val2);
 
 	if (ret)
 		return -EINVAL;
@@ -614,15 +614,15 @@ static ssize_t iwl_dbgfs_tlc_dhc_write(struct ieee80211_link_sta *link_sta,
 static ssize_t iwl_dbgfs_iwl_tlc_dhc_write(struct iwl_mvm *mvm, char *buf,
 					   size_t count, loff_t *ppos)
 {
-	u32 sta_id, type, value;
+	u32 sta_id, type, value, val2 = 0;
 	int ret;
 
-	if (sscanf(buf, "%i %i %i", &sta_id, &type, &value) != 3) {
-		IWL_DEBUG_RATE(mvm, "usage <sta_id> <type> <value>\n");
+	if (sscanf(buf, "%i %i %i %i", &sta_id, &type, &value, &val2) < 3) {
+		IWL_DEBUG_RATE(mvm, "usage <sta_id> <type> <value> <value2>\n");
 		return -EINVAL;
 	}
 
-	ret = iwl_rs_send_dhc(mvm, sta_id, type, value);
+	ret = iwl_rs_send_dhc(mvm, sta_id, type, value, val2);
 
 	if (ret)
 		return -EINVAL;

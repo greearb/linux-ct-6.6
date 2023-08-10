@@ -532,7 +532,7 @@ out:
 	rcu_read_unlock();
 }
 
-int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data)
+int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data, u32 data2)
 {
 	struct {
 		struct iwl_dhc_cmd dhc;
@@ -541,6 +541,7 @@ int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data)
 		.tlc.sta_id = sta_id,
 		.tlc.type = cpu_to_le32(type),
 		.tlc.data[0] = cpu_to_le32(data),
+		.tlc.data[1] = cpu_to_le32(data2),
 		.dhc.length = cpu_to_le32(sizeof(cmd.tlc) >> 2),
 		.dhc.index_and_mask =
 			cpu_to_le32(DHC_TABLE_INTEGRATION | DHC_TARGET_UMAC |
@@ -550,8 +551,8 @@ int iwl_rs_send_dhc(struct iwl_mvm *mvm, u8 sta_id, u32 type, u32 data)
 	int ret;
 
 	ret = iwl_mvm_send_cmd_pdu(mvm, cmd_id, CMD_ASYNC, sizeof(cmd), &cmd);
-	IWL_DEBUG_RATE(mvm, "sta_id %d, type: 0x%X, value: 0x%X, ret%d\n",
-		       sta_id, type, data, ret);
+	IWL_DEBUG_RATE(mvm, "sta_id %d, type: 0x%X, value: [0x%X 0x%X], ret: %d\n",
+		       sta_id, type, data, data2, ret);
 	return ret;
 }
 
