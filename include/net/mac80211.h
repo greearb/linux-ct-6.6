@@ -2292,6 +2292,7 @@ struct ieee80211_link_sta {
 	struct ieee80211_sta_he_cap he_cap;
 	struct ieee80211_he_6ghz_capa he_6ghz_capa;
 	struct ieee80211_sta_eht_cap eht_cap;
+	struct ieee80211_sta_eht_cap sta_eht_cap;
 
 	struct ieee80211_sta_aggregates agg;
 
