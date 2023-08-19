@@ -567,6 +567,9 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_160MHZ &&
 	    chandef.width == NL80211_CHAN_WIDTH_160)
 		flags |= ieee80211_chandef_downgrade(&chandef);
+	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_320MHZ &&
+	    chandef.width == NL80211_CHAN_WIDTH_320)
+		flags |= ieee80211_chandef_downgrade(&chandef);
 	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_40MHZ &&
 	    chandef.width > NL80211_CHAN_WIDTH_20)
 		flags |= ieee80211_chandef_downgrade(&chandef);
@@ -575,6 +578,9 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_160MHZ &&
 	    chandef.width != NL80211_CHAN_WIDTH_160)
 		flags |= IEEE80211_CONN_DISABLE_160MHZ;
+	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_320MHZ &&
+	    chandef.width != NL80211_CHAN_WIDTH_320)
+		flags |= IEEE80211_CONN_DISABLE_320MHZ;
 	if (link->u.mgd.conn_flags & IEEE80211_CONN_DISABLE_80P80MHZ &&
 	    chandef.width != NL80211_CHAN_WIDTH_80P80)
 		flags |= IEEE80211_CONN_DISABLE_80P80MHZ;
@@ -839,6 +845,45 @@ void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
 	}
 }
 
+void ieee80211_adjust_eht_cap(struct ieee80211_sta_eht_cap* my_cap,
+			      const struct ieee80211_sta_eht_cap* eht_cap,
+			      ieee80211_conn_flags_t conn_flags)
+{
+	// TODO:  This method needs reviewing and close inspection of the IEs.  Probably more
+	// changes are needed.
+	memcpy(my_cap, eht_cap, sizeof(*my_cap));
+
+	if (conn_flags & IEEE80211_CONN_DISABLE_160MHZ) {
+		my_cap->eht_cap_elem.phy_cap_info[7] &=
+			~(IEEE80211_EHT_PHY_CAP7_NON_OFDMA_UL_MU_MIMO_160MHZ |
+			  IEEE80211_EHT_PHY_CAP7_MU_BEAMFORMER_160MHZ);
+		my_cap->eht_mcs_nss_supp.bw._160.rx_tx_mcs9_max_nss = 0;
+		my_cap->eht_mcs_nss_supp.bw._160.rx_tx_mcs11_max_nss = 0;
+		my_cap->eht_mcs_nss_supp.bw._160.rx_tx_mcs13_max_nss = 0;
+		pr_info("adjust-eht-cap, disabling 160Mhz.");
+	}
+
+	if (conn_flags & IEEE80211_CONN_DISABLE_320MHZ) {
+		my_cap->eht_cap_elem.phy_cap_info[7] &=
+			~(IEEE80211_EHT_PHY_CAP7_NON_OFDMA_UL_MU_MIMO_320MHZ |
+			  IEEE80211_EHT_PHY_CAP7_MU_BEAMFORMER_320MHZ);
+		my_cap->eht_mcs_nss_supp.bw._320.rx_tx_mcs9_max_nss = 0;
+		my_cap->eht_mcs_nss_supp.bw._320.rx_tx_mcs11_max_nss = 0;
+		my_cap->eht_mcs_nss_supp.bw._320.rx_tx_mcs13_max_nss = 0;
+		pr_info("adjust-eht-cap, disabling 320Mhz.");
+	}
+
+	if (conn_flags & IEEE80211_CONN_DISABLE_OFDMA) {
+		pr_info("adjust-eht-cap, disabling OFDMA.");
+		my_cap->eht_cap_elem.phy_cap_info[7] &= ~IEEE80211_EHT_PHY_CAP7_NON_OFDMA_UL_MU_MIMO_80MHZ;
+		my_cap->eht_cap_elem.phy_cap_info[7] &= ~IEEE80211_EHT_PHY_CAP7_NON_OFDMA_UL_MU_MIMO_160MHZ;
+		my_cap->eht_cap_elem.phy_cap_info[7] &= ~IEEE80211_EHT_PHY_CAP7_NON_OFDMA_UL_MU_MIMO_320MHZ;
+		my_cap->eht_cap_elem.phy_cap_info[8] &= ~IEEE80211_EHT_PHY_CAP8_RX_1024QAM_WIDER_BW_DL_OFDMA;
+		my_cap->eht_cap_elem.phy_cap_info[8] &= ~IEEE80211_EHT_PHY_CAP8_RX_4096QAM_WIDER_BW_DL_OFDMA;
+	}
+}
+
+
 /* This function determines HE capability flags for the association
  * and builds the IE.
  */
@@ -877,11 +922,13 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 
 static void ieee80211_add_eht_ie(struct ieee80211_sub_if_data *sdata,
 				 struct sk_buff *skb,
-				 struct ieee80211_supported_band *sband)
+				 struct ieee80211_supported_band *sband,
+				 ieee80211_conn_flags_t conn_flags)
 {
 	u8 *pos;
 	const struct ieee80211_sta_he_cap *he_cap;
 	const struct ieee80211_sta_eht_cap *eht_cap;
+	struct ieee80211_sta_eht_cap my_cap;
 	u8 eht_cap_size;
 
 	he_cap = ieee80211_get_he_iftype_cap_vif(sband, &sdata->vif);
@@ -894,15 +941,17 @@ static void ieee80211_add_eht_ie(struct ieee80211_sub_if_data *sdata,
 	if (WARN_ON(!he_cap || !eht_cap))
 		return;
 
+	ieee80211_adjust_eht_cap(&my_cap, eht_cap, conn_flags);
+
 	eht_cap_size =
-		2 + 1 + sizeof(eht_cap->eht_cap_elem) +
+		2 + 1 + sizeof(my_cap.eht_cap_elem) +
 		ieee80211_eht_mcs_nss_size(&he_cap->he_cap_elem,
-					   &eht_cap->eht_cap_elem,
+					   &my_cap.eht_cap_elem,
 					   false) +
-		ieee80211_eht_ppe_size(eht_cap->eht_ppe_thres[0],
-				       eht_cap->eht_cap_elem.phy_cap_info);
+		ieee80211_eht_ppe_size(my_cap.eht_ppe_thres[0],
+				       my_cap.eht_cap_elem.phy_cap_info);
 	pos = skb_put(skb, eht_cap_size);
-	ieee80211_ie_build_eht_cap(pos, he_cap, eht_cap, pos + eht_cap_size,
+	ieee80211_ie_build_eht_cap(pos, he_cap, &my_cap, pos + eht_cap_size,
 				   false);
 }
 
@@ -1286,7 +1335,7 @@ static size_t ieee80211_assoc_link_elems(struct ieee80211_sub_if_data *sdata,
 	present_elems = NULL;
 
 	if (!(assoc_data->link[link_id].conn_flags & IEEE80211_CONN_DISABLE_EHT))
-		ieee80211_add_eht_ie(sdata, skb, sband);
+		ieee80211_add_eht_ie(sdata, skb, sband,  assoc_data->link[link_id].conn_flags);
 
 	if (sband->band == NL80211_BAND_S1GHZ) {
 		ieee80211_add_aid_request_ie(sdata, skb);
@@ -8011,6 +8060,9 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 		conn_flags |= IEEE80211_CONN_DISABLE_160MHZ;
 		conn_flags |= IEEE80211_CONN_DISABLE_80P80MHZ;
 	}
+
+	if (req->flags & ASSOC_REQ_DISABLE_320)
+		conn_flags |= IEEE80211_CONN_DISABLE_320MHZ;
 
 	memcpy(&ifmgd->ht_capa, &req->ht_capa, sizeof(ifmgd->ht_capa));
 	memcpy(&ifmgd->ht_capa_mask, &req->ht_capa_mask,
