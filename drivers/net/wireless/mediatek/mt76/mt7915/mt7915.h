@@ -345,7 +345,6 @@ struct mt7915_phy {
 
 	struct thermal_cooling_device *cdev;
 	u32 mac80211_rxfilter_flags;
-	u8 monitor_enabled;
 	u8 cdev_state;
 	u8 throttle_state;
 	u32 throttle_temp[2]; /* 0: critical high, 1: maximum */
@@ -451,6 +450,7 @@ struct mt7915_dev {
 	bool bin_file_mode;
 	bool muru_debug;
 	bool ibf;
+	u8 monitor_mask;
 
 	struct dentry *debugfs_dir;
 	struct rchan *relay_fwlog;

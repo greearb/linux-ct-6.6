@@ -542,10 +542,16 @@ static int mt7915_config(struct ieee80211_hw *hw, u32 changed)
 		u32 total_flags = phy->mac80211_rxfilter_flags;
 		u64 multicast = 0; /* not used by this driver currently. */
 
-		phy->monitor_enabled = enabled;
+		if (!enabled) {
+			dev->monitor_mask &= ~BIT(band);
+		} else {
+			dev->monitor_mask |= BIT(band);
+		}
 
 		mt76_rmw_field(dev, MT_DMA_DCR0(band), MT_DMA_DCR0_RXD_G5_EN,
 			       dev->rx_group_5_enable);
+		mt76_rmw_field(dev, MT_DMA_DCR0(band), MT_MDP_DCR0_RX_HDR_TRANS_EN,
+			       !dev->monitor_mask);
 		mt76_testmode_reset(phy->mt76, true);
 		__mt7915_configure_filter(hw, 0, &total_flags, multicast);
 	}
@@ -624,7 +630,7 @@ static void __mt7915_configure_filter(struct ieee80211_hw *hw,
 			MT_WF_RFCR1_DROP_CFACK;
 	u32 flags = 0;
 	bool is_promisc = *total_flags & FIF_CONTROL || phy->monitor_vif ||
-		phy->monitor_enabled;
+		dev->monitor_mask;
 	u32 mdp_rcfr1_mask = MT_MDP_RCFR1_RX_DROPPED_UCAST |
 		MT_MDP_RCFR1_RX_DROPPED_MCAST;
 	u32 mdp_rcfr1_set;
