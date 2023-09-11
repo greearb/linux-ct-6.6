@@ -10,7 +10,7 @@
 #include "fw/api/txq.h"
 
 /* Highest firmware API version supported */
-#define IWL_BZ_UCODE_API_MAX	83
+#define IWL_BZ_UCODE_API_MAX	84
 
 /* Lowest firmware API version supported */
 #define IWL_BZ_UCODE_API_MIN	80
@@ -153,6 +153,7 @@ const struct iwl_cfg_trans_params iwl_bz_trans_cfg = {
 };
 
 const char iwl_bz_name[] = "Intel(R) TBD Bz device";
+const char iwl_mtp_name[] = "Intel(R) TBD MtP device";
 
 const struct iwl_cfg iwl_cfg_bz = {
 	.fw_name_mac = "bz",

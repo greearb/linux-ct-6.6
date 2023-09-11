@@ -120,6 +120,7 @@ struct iwl_mvm_time_event_data {
 	 * if the te is in the time event list or not (when id == TE_MAX)
 	 */
 	u32 id;
+	u8 link_id;
 };
 
  /* Power management */
@@ -1348,6 +1349,9 @@ struct iwl_mvm {
 	/* Firmware RFI state &enum iwl_rfi_support_reason */
 	u32 fw_rfi_state;
 	bool pldr_sync;
+	bool rfi_wlan_master;
+	bool force_enable_rfi;
+	bool statistics_clear;
 };
 
 /* Extract MVM priv from op_mode and _hw */
@@ -1839,6 +1843,16 @@ static inline void iwl_mvm_wait_for_async_handlers(struct iwl_mvm *mvm)
 }
 
 /* Statistics */
+void iwl_mvm_handle_rx_system_oper_stats(struct iwl_mvm *mvm,
+					 struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_handle_rx_system_oper_part1_stats(struct iwl_mvm *mvm,
+					       struct iwl_rx_cmd_buffer *rxb);
+static inline void
+iwl_mvm_handle_rx_system_end_stats_notif(struct iwl_mvm *mvm,
+					 struct iwl_rx_cmd_buffer *rxb)
+{
+}
+
 void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 				  struct iwl_rx_packet *pkt);
 void iwl_mvm_rx_statistics(struct iwl_mvm *mvm,
@@ -2106,13 +2120,12 @@ void iwl_mvm_bss_info_changed_station_assoc(struct iwl_mvm *mvm,
  *
  * @add_aux_sta_for_hs20: pointer to the function that adds an aux sta
  *	for Hot Spot 2.0
- * @switch_phy_ctxt: pointer to the function that switches a vif from one
- *	phy_ctx to another
+ * @link: For a P2P Device interface, pointer to a function that links the
+ *      MAC/Link to the PHY context
  */
 struct iwl_mvm_roc_ops {
 	int (*add_aux_sta_for_hs20)(struct iwl_mvm *mvm, u32 lmac_id);
-	int (*switch_phy_ctxt)(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			       struct iwl_mvm_phy_ctxt *new_phy_ctxt);
+	int (*link)(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
 };
 
 int iwl_mvm_roc_common(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
@@ -2123,7 +2136,7 @@ int iwl_mvm_cancel_roc(struct ieee80211_hw *hw,
 		       struct ieee80211_vif *vif);
 /*Session Protection */
 void iwl_mvm_protect_assoc(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			   u32 duration_override);
+			   u32 duration_override, unsigned int link_id);
 
 /* Quota management */
 static inline size_t iwl_mvm_quota_cmd_size(struct iwl_mvm *mvm)
@@ -2183,18 +2196,19 @@ void iwl_mvm_rx_umac_scan_iter_complete_notif(struct iwl_mvm *mvm,
 /* MVM debugfs */
 #ifdef CONFIG_IWLWIFI_DEBUGFS
 void iwl_mvm_dbgfs_register(struct iwl_mvm *mvm);
-void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
-void iwl_mvm_vif_dbgfs_clean(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+void iwl_mvm_vif_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+void iwl_mvm_vif_dbgfs_add_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
+void iwl_mvm_vif_dbgfs_rm_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
 #else
 static inline void iwl_mvm_dbgfs_register(struct iwl_mvm *mvm)
 {
 }
 static inline void
-iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
+iwl_mvm_vif_dbgfs_add_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 {
 }
 static inline void
-iwl_mvm_vif_dbgfs_clean(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
+iwl_mvm_vif_dbgfs_rm_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 {
 }
 #endif /* CONFIG_IWLWIFI_DEBUGFS */
@@ -2475,6 +2489,7 @@ void iwl_mvm_recalc_tdls_state(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			       bool sta_added);
 void iwl_mvm_mac_mgd_protect_tdls_discover(struct ieee80211_hw *hw,
 					   struct ieee80211_vif *vif);
+// TODO:  Fixme when updating.  unsigned int link_id);
 int iwl_mvm_tdls_channel_switch(struct ieee80211_hw *hw,
 				struct ieee80211_vif *vif,
 				struct ieee80211_sta *sta, u8 oper_class,
@@ -2571,6 +2586,10 @@ void iwl_mvm_link_sta_add_debugfs(struct ieee80211_hw *hw,
 				  struct ieee80211_vif *vif,
 				  struct ieee80211_link_sta *link_sta,
 				  struct dentry *dir);
+void iwl_mvm_link_add_debugfs(struct ieee80211_hw *hw,
+			      struct ieee80211_vif *vif,
+			      struct ieee80211_bss_conf *link_conf,
+			      struct dentry *dir);
 #endif
 
 /* new MLD related APIs */
@@ -2600,10 +2619,11 @@ u32 iwl_mvm_get_sec_flags(struct iwl_mvm *mvm,
 
 /* 11ax Softap Test Mode */
 
-bool iwl_rfi_ddr_supported(struct iwl_mvm *mvm);
-bool iwl_rfi_dlvr_supported(struct iwl_mvm *mvm);
+bool iwl_rfi_ddr_supported(struct iwl_mvm *mvm, bool so_rfi_mode);
+bool iwl_rfi_dlvr_supported(struct iwl_mvm *mvm, bool so_rfi_mode);
 int iwl_rfi_send_config_cmd(struct iwl_mvm *mvm,
-			    struct iwl_rfi_lut_entry *rfi_table);
+			    struct iwl_rfi_lut_entry *rfi_table,
+			    bool is_set_master_cmd);
 struct iwl_rfi_freq_table_resp_cmd *iwl_rfi_get_freq_table(struct iwl_mvm *mvm);
 void iwl_rfi_support_notif_handler(struct iwl_mvm *mvm,
 				   struct iwl_rx_cmd_buffer *rxb);
@@ -2955,4 +2975,9 @@ static inline int iwl_mvm_sum_sigs_2(int a, int b)
        }
 }
 
+u8 iwl_mvm_eval_dsm_rfi_dlvr(struct iwl_mvm *mvm);
+bool iwl_mvm_enable_fils(struct iwl_mvm *mvm,
+			 struct ieee80211_chanctx_conf *ctx);
+void iwl_mvm_mld_select_links(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
+			      bool valid_links_changed);
 #endif /* __IWL_MVM_H__ */

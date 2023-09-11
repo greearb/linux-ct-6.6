@@ -674,7 +674,8 @@ static const struct ieee80211_sband_iftype_data iwl_he_eht_capa[] = {
 					IEEE80211_EHT_MAC_CAP0_EPCS_PRIO_ACCESS |
 					IEEE80211_EHT_MAC_CAP0_OM_CONTROL |
 					IEEE80211_EHT_MAC_CAP0_TRIG_TXOP_SHARING_MODE1 |
-					IEEE80211_EHT_MAC_CAP0_TRIG_TXOP_SHARING_MODE2,
+					IEEE80211_EHT_MAC_CAP0_TRIG_TXOP_SHARING_MODE2 |
+					IEEE80211_EHT_MAC_CAP0_SCS_TRAFFIC_DESC,
 				.phy_cap_info[0] =
 					IEEE80211_EHT_PHY_CAP0_242_TONE_RU_GT20MHZ |
 					IEEE80211_EHT_PHY_CAP0_NDP_4_EHT_LFT_32_GI |
@@ -1240,6 +1241,9 @@ static void iwl_init_he_override(struct iwl_trans *trans,
 				 IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G |
 				 IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_RU_MAPPING_IN_5G);
 		}
+		if (trans->no_160)
+			iftype_data->he_cap.he_cap_elem.phy_cap_info[0] &=
+				 ~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
 
 		IWL_COPY_BIN(he_mac_cap, he_cap.he_cap_elem.mac_cap_info);
 
@@ -1293,11 +1297,21 @@ static void iwl_init_eht_band_override(struct iwl_trans *trans,
 			IWL_COPY_BIN(eht_mcs_320, eht_cap.eht_mcs_nss_supp.bw._320);
 		}
 
-		if (trans->dbg_cfg.eht_disable_320 || sband->band != NL80211_BAND_6GHZ) {
+		if (trans->dbg_cfg.eht_disable_320 ||
+		    trans->reduced_cap_sku ||
+		    sband->band != NL80211_BAND_6GHZ) {
 			memset(&iftype_data->eht_cap.eht_mcs_nss_supp.bw._320, 0,
 			       sizeof(iftype_data->eht_cap.eht_mcs_nss_supp.bw._320));
 			iftype_data->eht_cap.eht_cap_elem.phy_cap_info[0] &=
 				~IEEE80211_EHT_PHY_CAP0_320MHZ_IN_6GHZ;
+		}
+		if (trans->reduced_cap_sku) {
+			iftype_data->eht_cap.eht_mcs_nss_supp.bw._80.rx_tx_mcs13_max_nss = 0;
+			iftype_data->eht_cap.eht_mcs_nss_supp.bw._160.rx_tx_mcs13_max_nss = 0;
+			iftype_data->eht_cap.eht_cap_elem.phy_cap_info[8] &=
+				~IEEE80211_EHT_PHY_CAP8_RX_4096QAM_WIDER_BW_DL_OFDMA;
+			iftype_data->eht_cap.eht_cap_elem.phy_cap_info[2] &=
+				~IEEE80211_EHT_PHY_CAP2_SOUNDING_DIM_320MHZ_MASK;
 		}
 	}
 }
@@ -2319,6 +2333,14 @@ struct iwl_nvm_data *iwl_get_nvm(struct iwl_trans *trans,
 				"mac address from config file is invalid\n");
 	}
 #endif
+
+	/* WA for wrong multicast MAC address */
+	if ((CSR_HW_REV_TYPE(trans->hw_rev) == IWL_CFG_MAC_TYPE_GL) &&
+	    (CSR_HW_REV_STEP_DASH(trans->hw_rev) == SILICON_C_STEP) &&
+	    (CSR_HW_RFID_TYPE(trans->hw_rf_id) == IWL_CFG_RF_TYPE_FM) &&
+	    (CSR_HW_RFID_STEP(trans->hw_rf_id) == SILICON_C_STEP))
+		nvm->hw_addr[0] &= ~BIT(0);
+
 	if (!is_valid_ether_addr(nvm->hw_addr)) {
 		IWL_ERR(trans, "no valid mac address was found\n");
 		ret = -EINVAL;

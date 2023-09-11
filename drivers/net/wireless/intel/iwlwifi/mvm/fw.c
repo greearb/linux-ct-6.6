@@ -694,7 +694,7 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 	if (mvm->trans->trans_cfg->device_family == IWL_DEVICE_FAMILY_AX210) {
 		sb_cfg = iwl_read_umac_prph(mvm->trans, SB_MODIFY_CFG_FLAG);
 		/* if needed, we'll reset this on our way out later */
-		mvm->pldr_sync = !(sb_cfg & SB_CFG_RESIDES_IN_OTP_MASK);
+		mvm->pldr_sync = sb_cfg == SB_CFG_RESIDES_IN_ROM;
 		if (mvm->pldr_sync && iwl_mei_pldr_req())
 			return -EBUSY;
 	}
@@ -793,7 +793,7 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 
 	mvm->rfkill_safe_init_done = true;
 
-	iwl_rfi_send_config_cmd(mvm, NULL);
+	iwl_rfi_send_config_cmd(mvm, NULL, false);
 	return 0;
 
 error:
@@ -1212,6 +1212,12 @@ static const struct dmi_system_id dmi_tas_approved_list[] = {
 	{ .ident = "ASUS",
 	  .matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+		},
+	},
+	{ .ident = "GOOGLE-HP",
+	  .matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Google"),
+			DMI_MATCH(DMI_BOARD_VENDOR, "HP"),
 		},
 	},
 	{ .ident = "MSI",
