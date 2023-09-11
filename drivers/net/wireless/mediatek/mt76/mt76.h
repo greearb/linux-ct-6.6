@@ -365,6 +365,9 @@ struct mt76_wcid {
 	bool sw_iv;
 	u16 ampdu_chain; /* rx ampdu chain count, for stats */
 
+	struct list_head tx_list;
+	struct sk_buff_head tx_pending;
+
 	struct list_head list;
 	struct idr pktid;
 
@@ -764,6 +767,8 @@ struct mt76_phy {
 	unsigned long state;
 	u8 band_idx;
 
+	spinlock_t tx_lock;
+	struct list_head tx_list;
 	struct mt76_queue *q_tx[__MT_TXQ_MAX];
 
 	struct cfg80211_chan_def chandef;
@@ -1673,22 +1678,7 @@ mt76_token_put(struct mt76_dev *dev, int token)
 	return txwi;
 }
 
-static inline void mt76_packet_id_init(struct mt76_wcid *wcid)
-{
-	INIT_LIST_HEAD(&wcid->list);
-	idr_init(&wcid->pktid);
-}
-
-static inline void
-mt76_packet_id_flush(struct mt76_dev *dev, struct mt76_wcid *wcid)
-{
-	struct sk_buff_head list;
-
-	mt76_tx_status_lock(dev, &list);
-	mt76_tx_status_skb_get(dev, wcid, -1, &list);
-	mt76_tx_status_unlock(dev, &list);
-
-	idr_destroy(&wcid->pktid);
-}
+void mt76_wcid_init(struct mt76_wcid *wcid);
+void mt76_wcid_cleanup(struct mt76_dev *dev, struct mt76_wcid *wcid);
 
 #endif
