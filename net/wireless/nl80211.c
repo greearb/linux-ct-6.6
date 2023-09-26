@@ -9429,6 +9429,8 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 			chan = ieee80211_get_channel_khz(wiphy, freq);
 			if (!chan) {
 				err = -EINVAL;
+				pr_err("scan: get-channel failed, freq: %d\n",
+				       freq);
 				goto out_free;
 			}
 
@@ -9488,6 +9490,8 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 		nla_for_each_nested(attr, info->attrs[NL80211_ATTR_SCAN_SSIDS], tmp) {
 			if (nla_len(attr) > IEEE80211_MAX_SSID_LEN) {
 				err = -EINVAL;
+				pr_err("scan: ssid is out of range, len: %d\n",
+				       nla_len(attr));
 				goto out_free;
 			}
 			request->ssids[i].ssid_len = nla_len(attr);
@@ -9516,6 +9520,8 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 
 			if (band < 0 || band >= NUM_NL80211_BANDS) {
 				err = -EINVAL;
+				pr_err("scan: band is out of range: %d\n",
+				       band);
 				goto out_free;
 			}
 
@@ -9526,8 +9532,11 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 						     nla_data(attr),
 						     nla_len(attr),
 						     &request->rates[band]);
-			if (err)
+			if (err) {
+				pr_err("scan: get-ratemask failed: %d\n",
+				       err);
 				goto out_free;
+			}
 		}
 	}
 
@@ -9540,8 +9549,11 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 
 	err = nl80211_check_scan_flags(wiphy, wdev, request, info->attrs,
 				       false);
-	if (err)
+	if (err) {
+		pr_err("scan: check-scan-flags failed: %d\n",
+		       err);
 		goto out_free;
+	}
 
 	request->no_cck =
 		nla_get_flag(info->attrs[NL80211_ATTR_TX_NO_CCK_RATE]);
@@ -9572,8 +9584,11 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 	rdev->scan_req = request;
 	err = cfg80211_scan(rdev);
 
-	if (err)
+	if (err) {
+		pr_err("scan: cfg80211_scan failed: %d\n",
+		       err);
 		goto out_free;
+	}
 
 	nl80211_send_scan_start(rdev, wdev);
 	dev_hold(wdev->netdev);

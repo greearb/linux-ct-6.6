@@ -1274,6 +1274,9 @@ mt7921_start_ap(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 out:
 	mt792x_mutex_release(dev);
 
+	if (err)
+		dev_err(dev->mt76.dev, "hw-scan failed: %d", err);
+
 	return err;
 }
 
