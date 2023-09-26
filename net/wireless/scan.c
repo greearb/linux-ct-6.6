@@ -1024,8 +1024,12 @@ int cfg80211_scan(struct cfg80211_registered_device *rdev)
 			n_channels++;
 	}
 
-	if (!n_channels)
-		return cfg80211_scan_6ghz(rdev);
+	if (!n_channels) {
+		int rv = cfg80211_scan_6ghz(rdev);
+		if (rv)
+			pr_err("cfg80211-scan: cfg80211_scan_6ghz failed: %d\n", rv);
+		return rv;
+	}
 
 	request = kzalloc(struct_size(request, channels, n_channels),
 			  GFP_KERNEL);
