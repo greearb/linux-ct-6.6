@@ -2757,4 +2757,6 @@ static inline int iwl_mvm_sum_sigs_2(int a, int b)
        }
 }
 
+void iwl_mvm_mld_select_links(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
+			      bool valid_links_changed);
 #endif /* __IWL_MVM_H__ */
