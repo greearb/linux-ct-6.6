@@ -999,8 +999,8 @@ skip:
 		if (err) {
 			rdev->int_scan_req = old;
 			kfree(request);
-			pr_err("cfg80211-scan-6ghz, rdev_scan failed: %d  n_channels: %d  need_scan_psc: %d",
-			       err, request->n_channels, need_scan_psc);
+			pr_err("cfg80211-scan-6ghz, rdev_scan failed: %d  n_channels: %d  need_scan_psc: %d req-n-channels: %d",
+			       err, request->n_channels, need_scan_psc, rdev_req->n_channels);
 		} else {
 			kfree(old);
 		}
@@ -1008,8 +1008,8 @@ skip:
 		return err;
 	}
 
-	pr_err("cfg80211-scan-6ghz, n-channels is 0, flags: 0x%x  need_scan_psc: %d\n",
-	       rdev_req->flags, need_scan_psc);
+	pr_err("cfg80211-scan-6ghz, n-channels is 0, flags: 0x%x  need_scan_psc: %d req-n-channels: %d\n",
+	       rdev_req->flags, need_scan_psc, rdev_req->n_channels);
 	kfree(request);
 	return -EINVAL;
 }
