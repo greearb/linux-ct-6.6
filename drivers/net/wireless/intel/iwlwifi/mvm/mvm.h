@@ -603,6 +603,7 @@ struct iwl_mvm_ethtool_stats {
 	u64 rx_bw[5]; /* 20, 40, 80, 160, 320 */
 	u64 rx_bw_he_ru;
 	u64 rx_mcs[14]; /* mcs 0 to mcs 13 */
+	u64 rx_ampdu_len[15];
 	u64 rx_nss[2]; /* rx nss histogram */
 };
 
@@ -953,6 +954,8 @@ struct iwl_mvm {
 
 	u8 cca_40mhz_workaround;
 
+	/* Accumulate the count for the number of frames in the ampdu */
+	u32 rx_this_ampdu_count;
 	u32 ampdu_ref;
 	bool ampdu_toggle;
 
@@ -1850,6 +1853,8 @@ int iwl_mvm_up(struct iwl_mvm *mvm);
 int iwl_mvm_load_d3_fw(struct iwl_mvm *mvm);
 
 int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm);
+
+void iwl_mvm_count_rx_histogram(struct iwl_mvm *mvm);
 
 /*
  * FW notifications / CMD responses handlers
