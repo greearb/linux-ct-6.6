@@ -8266,7 +8266,8 @@ int ieee80211_mgd_deauth(struct ieee80211_sub_if_data *sdata,
 			   req->bssid, req->reason_code,
 			   ieee80211_get_reason_code_string(req->reason_code));
 
-		info.link_id = ifmgd->auth_data->link_id;
+		if (ifmgd->auth_data)
+			info.link_id = ifmgd->auth_data->link_id;
 		drv_mgd_prepare_tx(sdata->local, sdata, &info);
 		ieee80211_send_deauth_disassoc(sdata, req->bssid, req->bssid,
 					       IEEE80211_STYPE_DEAUTH,
@@ -8287,7 +8288,8 @@ int ieee80211_mgd_deauth(struct ieee80211_sub_if_data *sdata,
 			   req->bssid, req->reason_code,
 			   ieee80211_get_reason_code_string(req->reason_code));
 
-		info.link_id = ifmgd->assoc_data->assoc_link_id;
+		if (ifmgd->assoc_data)
+			info.link_id = ifmgd->assoc_data->assoc_link_id;
 		drv_mgd_prepare_tx(sdata->local, sdata, &info);
 		ieee80211_send_deauth_disassoc(sdata, req->bssid, req->bssid,
 					       IEEE80211_STYPE_DEAUTH,
