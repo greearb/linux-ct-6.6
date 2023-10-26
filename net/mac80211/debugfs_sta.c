@@ -716,8 +716,16 @@ static ssize_t link_sta_vht_capa_read(struct file *file, char __user *userbuf,
 		return -ENOMEM;
 	p = buf;
 
-	rcu_read_lock();
+	/* Technically, this should hold the wiphy lock, I think.  But that
+	 * can cause deadlocks where something is holding the wiphy lock while
+	 * trying to remove debugfs, and we are blocked here trying to grab lock
+	 * before we can close the file descriptor...
+	 */
+	/* wiphy_lock(sdata->local->hw.wiphy);
 	link = sdata_dereference(sdata->link[link_sta->link_id], sdata);
+	*/
+	rcu_read_lock();
+	rcu_dereference(sdata->link[link_sta->link_id]);
 
 	if (link && link->conf)
 		chandef = &link->conf->chandef;
@@ -787,6 +795,8 @@ static ssize_t link_sta_vht_capa_read(struct file *file, char __user *userbuf,
 		p += scnprintf(p, bufsz + buf - p, "16Mhz");
 		break;
 	}
+	chandef = NULL;
+	rcu_read_unlock();
 
 	p += scnprintf(p, bufsz + buf - p, "\nPeer-Rx-Bandwidth:\t");
 	switch (link_sta->pub->bandwidth) {
@@ -901,7 +911,6 @@ static ssize_t link_sta_vht_capa_read(struct file *file, char __user *userbuf,
 #undef PFLAG
 	}
 
-	rcu_read_unlock();
 	ret = simple_read_from_buffer(userbuf, count, ppos, buf, p - buf);
 	kfree(buf);
 	return ret;
