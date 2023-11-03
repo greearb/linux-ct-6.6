@@ -70,6 +70,8 @@ static int iwl_dbg_tlv_add(const struct iwl_ucode_tlv *tlv,
 	u32 len = le32_to_cpu(tlv->length);
 	struct iwl_dbg_tlv_node *node;
 
+	return -ENOMEM; /* disable this feature, seems to cause mem corruption somehow. */
+
 	node = kzalloc(sizeof(*node) + len, GFP_KERNEL);
 	if (!node)
 		return -ENOMEM;
