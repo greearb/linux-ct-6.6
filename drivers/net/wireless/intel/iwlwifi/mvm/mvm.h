@@ -1287,6 +1287,10 @@ struct iwl_mvm {
 	struct iwl_mei_scan_filter mei_scan_filter;
 
 	bool statistics_clear;
+
+#define IWL_MVM_BLOCK_TX 0x1
+#define IWL_MVM_BLOCK_RX 0x2
+	u8 block_traffic;
 };
 
 /* Extract MVM priv from op_mode and _hw */
