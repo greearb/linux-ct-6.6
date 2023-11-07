@@ -241,7 +241,8 @@ static void iwl_mvm_pass_packet_to_mac80211(struct iwl_mvm *mvm,
 					    struct ieee80211_sta *sta,
 					    struct ieee80211_link_sta *link_sta)
 {
-	if (unlikely(iwl_mvm_check_pn(mvm, skb, queue, sta))) {
+	if (unlikely(iwl_mvm_check_pn(mvm, skb, queue, sta) ||
+	    mvm->block_traffic & IWL_MVM_BLOCK_RX)) {
 		kfree_skb(skb);
 		return;
 	}
