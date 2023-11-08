@@ -531,6 +531,7 @@ void simple_recursive_removal(struct dentry *dentry,
 		inode_lock(inode);
 		if (d_is_dir(this))
 			inode->i_flags |= S_DEAD;
+		inode->i_flags |= S_GOING_AWAY;
 		while ((child = find_next_child(this, victim)) == NULL) {
 			// kill and ascend
 			// update metadata while it's still locked
@@ -541,6 +542,7 @@ void simple_recursive_removal(struct dentry *dentry,
 			this = this->d_parent;
 			inode = this->d_inode;
 			inode_lock(inode);
+			inode->i_flags |= S_GOING_AWAY;
 			if (simple_positive(victim)) {
 				d_invalidate(victim);	// avoid lost mounts
 				if (d_is_dir(victim))
