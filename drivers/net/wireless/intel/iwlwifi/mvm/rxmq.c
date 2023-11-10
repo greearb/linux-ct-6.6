@@ -2056,10 +2056,33 @@ static void iwl_mvm_rx_fill_status(struct iwl_mvm *mvm,
 	if (rate_n_flags & RATE_MCS_LDPC_MSK)
 		rx_status->enc_flags |= RX_ENC_FLAG_LDPC;
 
+	u8 bw_idx = 0;
+
+	switch (rx_status->bw) {
+	case RATE_INFO_BW_20:
+		bw_idx = RATE_MCS_CHAN_WIDTH_20_VAL;
+		break;
+	case RATE_INFO_BW_40:
+		bw_idx = RATE_MCS_CHAN_WIDTH_40_VAL;
+		break;
+	case RATE_INFO_BW_80:
+		bw_idx = RATE_MCS_CHAN_WIDTH_80_VAL;
+		break;
+	case RATE_INFO_BW_160:
+		bw_idx = RATE_MCS_CHAN_WIDTH_160_VAL;
+		break;
+	case RATE_INFO_BW_320:
+		bw_idx = RATE_MCS_CHAN_WIDTH_320_VAL;
+		break;
+	default:
+		bw_idx = 0;
+		break;
+	}
+
 	switch (format) {
 	case RATE_MCS_VHT_MSK:
 		rx_status->encoding = RX_ENC_VHT;
-		mvm->ethtool_stats.rx_bw[rx_status->bw]++;
+		mvm->ethtool_stats.rx_bw[bw_idx]++;
 		break;
 	case RATE_MCS_HE_MSK:
 		rx_status->encoding = RX_ENC_HE;
@@ -2077,7 +2100,7 @@ static void iwl_mvm_rx_fill_status(struct iwl_mvm *mvm,
 		rx_status->rate_idx = RATE_HT_MCS_INDEX(rate_n_flags);
 		rx_status->nss = rx_status->rate_idx / 8 + 1;
 		rx_status->enc_flags |= stbc << RX_ENC_FLAG_STBC_SHIFT;
-		mvm->ethtool_stats.rx_bw[rx_status->bw]++;
+		mvm->ethtool_stats.rx_bw[bw_idx]++;
 		break;
 	case RATE_MCS_VHT_MSK:
 	case RATE_MCS_HE_MSK:
