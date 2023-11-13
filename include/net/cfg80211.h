@@ -9318,6 +9318,7 @@ bool cfg80211_valid_disable_subchannel_bitmap(u16 *bitmap,
  * case disconnect instead.
  * Also note that the wdev mutex must be held.
  */
+
 void cfg80211_links_removed(struct net_device *dev, u16 link_mask);
 
 #ifdef CONFIG_CFG80211_DEBUGFS
@@ -9365,5 +9366,15 @@ ssize_t wiphy_locked_debugfs_write(struct wiphy *wiphy, struct file *file,
 						      void *data),
 				   void *data);
 #endif
+
+/**
+ * cfg80211_schedule_channels_check - schedule regulatory check if needed
+ * @netdev: the device to check
+ *
+ * In case the device supports NO_IR or DFS relaxations, schedule regulatory
+ * channels check, as previous concurrent operation conditions may not
+ * hold anymore.
+ */
+void cfg80211_schedule_channels_check(struct net_device *netdev);
 
 #endif /* __NET_CFG80211_H */
