@@ -41,6 +41,8 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 	mvmvif->deflink.active = 0;
 	/* the first link always points to the default one */
 	mvmvif->link[0] = &mvmvif->deflink;
+	pr_err("add-iface: setting link %d, mvmvif: %p  link[i]: %p\n",
+	       0, mvmvif, mvmvif->link[0]);
 
 	ret = iwl_mvm_mld_mac_ctxt_add(mvm, vif);
 	if (ret)
@@ -101,6 +103,8 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 				       IEEE80211_VIF_SUPPORTS_CQM_RSSI);
 	}
  out_remove_mac:
+	pr_err("out-remove-mac: clearing link %d, mvmvif: %p  link[i]: %p\n",
+	       0, mvmvif, mvmvif->link[0]);
 	mvmvif->link[0] = NULL;
 	iwl_mvm_mld_mac_ctxt_remove(mvm, vif);
  out_unlock:
@@ -1163,6 +1167,8 @@ iwl_mvm_mld_change_vif_links(struct ieee80211_hw *hw,
 		err = iwl_mvm_disable_link(mvm, vif, &vif->bss_conf);
 		if (err)
 			goto out_err;
+		pr_err("old-links == 0: clearing link %d, mvmvif: %p  link[i]: %p\n",
+		       0, mvmvif, mvmvif->link[0]);
 		mvmvif->link[0] = NULL;
 	}
 
@@ -1173,6 +1179,8 @@ iwl_mvm_mld_change_vif_links(struct ieee80211_hw *hw,
 			err = iwl_mvm_disable_link(mvm, vif, link_conf);
 			if (err)
 				goto out_err;
+			pr_err("removed: freeing link %d, mvmvif: %p  link[i]: %p\n",
+			       i, mvmvif, mvmvif->link[i]);
 			kfree(mvmvif->link[i]);
 			mvmvif->link[i] = NULL;
 		} else if (added & BIT(i)) {
@@ -1183,8 +1191,11 @@ iwl_mvm_mld_change_vif_links(struct ieee80211_hw *hw,
 				continue;
 
 			if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART,
-				      &mvm->status))
+				      &mvm->status)) {
 				mvmvif->link[i] = new_link[i];
+				pr_err("assigning-newlink: setting link %d, mvmvif: %p  link[i]: %p\n",
+				       i, mvmvif, mvmvif->link[i]);
+			}
 			new_link[i] = NULL;
 			err = iwl_mvm_add_link(mvm, vif, link_conf);
 			if (err)
@@ -1195,6 +1206,8 @@ iwl_mvm_mld_change_vif_links(struct ieee80211_hw *hw,
 	err = 0;
 	if (new_links == 0) {
 		mvmvif->link[0] = &mvmvif->deflink;
+		pr_err("new-links == 0, setting deflink link %d, mvmvif: %p  link[i]: %p\n",
+		       0, mvmvif, mvmvif->link[0]);
 		err = iwl_mvm_add_link(mvm, vif, &vif->bss_conf);
 	}
 
