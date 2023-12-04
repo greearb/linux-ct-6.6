@@ -1612,12 +1612,13 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 	struct ieee80211_supported_band *sband;
 	struct mt76_dev *mdev = &dev->mt76;
 	struct mt76_phy *mphy;
-	struct ieee80211_tx_info *info;
+	struct ieee80211_tx_info *info = NULL;
 	struct sk_buff_head list;
 	struct rate_info rate = {};
 	struct sk_buff *skb = NULL;
 	bool cck = false;
 	u32 txrate, txs, mode, stbc;
+	u32 mcs_idx = 0;
 
 	txs = le32_to_cpu(txs_data[0]);
 
@@ -1660,7 +1661,7 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 	if (rate.nss - 1 < ARRAY_SIZE(stats->tx_nss))
 		stats->tx_nss[rate.nss - 1]++;
 	if (rate.mcs < ARRAY_SIZE(stats->tx_mcs))
-		stats->tx_mcs[rate.mcs]++;
+		mcs_idx = rate.mcs;
 
 	mode = FIELD_GET(MT_TX_RATE_MODE, txrate);
 	switch (mode) {
@@ -1679,7 +1680,9 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 
 		rate.mcs = mt76_get_rate(mphy->dev, sband, rate.mcs, cck);
 		rate.legacy = sband->bitrates[rate.mcs].bitrate;
-		info->status.rates[0].idx = rate.mcs;
+		if (info)
+			info->status.rates[0].idx = rate.mcs;
+		mcs_idx = rate.mcs;
 		break;
 	case MT_PHY_TYPE_HT:
 	case MT_PHY_TYPE_HT_GF:
@@ -1690,8 +1693,11 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 		if (wcid->rate.flags & RATE_INFO_FLAGS_SHORT_GI)
 			rate.flags |= RATE_INFO_FLAGS_SHORT_GI;
 
-		info->status.rates[0].idx = rate.mcs + rate.nss * 8;
-		info->status.rates[0].flags |= IEEE80211_TX_RC_MCS;
+		if (info) {
+			info->status.rates[0].idx = rate.mcs;
+			info->status.rates[0].flags |= IEEE80211_TX_RC_MCS;
+		}
+		mcs_idx = rate.mcs % 8;
 		break;
 	case MT_PHY_TYPE_VHT:
 		if (rate.mcs > 9)
@@ -1701,8 +1707,10 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 		if (wcid->rate.flags & RATE_INFO_FLAGS_SHORT_GI)
 			rate.flags |= RATE_INFO_FLAGS_SHORT_GI;
 
-		info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
-		info->status.rates[0].flags |= IEEE80211_TX_RC_VHT_MCS;
+		if (info) {
+			info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
+			info->status.rates[0].flags |= IEEE80211_TX_RC_VHT_MCS;
+		}
 		break;
 	case MT_PHY_TYPE_HE_SU:
 	case MT_PHY_TYPE_HE_EXT_SU:
@@ -1714,7 +1722,8 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 		rate.he_gi = wcid->rate.he_gi;
 		rate.he_dcm = FIELD_GET(MT_TX_RATE_DCM, txrate);
 		rate.flags = RATE_INFO_FLAGS_HE_MCS;
-		info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
+		if (info)
+			info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
 		break;
 	case MT_PHY_TYPE_EHT_SU:
 	case MT_PHY_TYPE_EHT_TRIG:
@@ -1724,12 +1733,14 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
 
 		rate.eht_gi = wcid->rate.eht_gi;
 		rate.flags = RATE_INFO_FLAGS_EHT_MCS;
-		info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
+		if (info)
+			info->status.rates[0].idx = (rate.nss << 4) | rate.mcs;
 		break;
 	default:
 		goto out;
 	}
 
+	stats->tx_mcs[mcs_idx]++;
 	stats->tx_mode[mode]++;
 
 	switch (FIELD_GET(MT_TXS0_BW, txs)) {
