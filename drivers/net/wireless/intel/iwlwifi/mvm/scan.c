@@ -101,6 +101,7 @@ struct iwl_mvm_scan_params {
 	bool scan_6ghz;
 	bool enable_6ghz_passive;
 	bool respect_p2p_go, respect_p2p_go_hb;
+	s8 tsf_report_link_id;
 	u8 bssid[ETH_ALEN] __aligned(2);
 };
 
@@ -2345,20 +2346,12 @@ iwl_mvm_scan_umac_fill_general_p_v12(struct iwl_mvm *mvm,
 	if (version < 16) {
 		gp->scan_start_mac_or_link_id = scan_vif->id;
 	} else {
-		struct iwl_mvm_vif_link_info *link_info;
-		u8 link_id = 0;
+		struct iwl_mvm_vif_link_info *link_info =
+			scan_vif->link[params->tsf_report_link_id];
 
-		/* Use one of the active link (if any). In the future it would
-		 * be possible that the link ID would be part of the scan
-		 * request coming from upper layers so we would need to use it.
-		 */
-		if (vif->active_links)
-			link_id = ffs(vif->active_links) - 1;
-
-		link_info = scan_vif->link[link_id];
 		if (WARN_ON(!link_info))
-			IWL_ERR(mvm, "scan failure: Cannot find link info for link-id: %d active-links: 0x%x\n",
-				link_id, vif->active_links);
+			IWL_ERR(mvm, "scan failure: Cannot find link info for tsf-report-link-id: %d active-links: 0x%x\n",
+				params->tsf_report_link_id, vif->active_links);
 		else
 			gp->scan_start_mac_or_link_id = link_info->fw_link_id;
 	}
@@ -2979,6 +2972,14 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	if (req->duration)
 		params.iter_notif = true;
+
+	params.tsf_report_link_id = req->tsf_report_link_id;
+	if (params.tsf_report_link_id < 0) {
+		if (vif->active_links)
+			params.tsf_report_link_id = __ffs(vif->active_links);
+		else
+			params.tsf_report_link_id = 0;
+	}
 
 	iwl_mvm_build_scan_probe(mvm, vif, ies, &params);
 
