@@ -230,8 +230,7 @@ void mt7996_dma_start(struct mt7996_dev *dev, bool reset, bool wed_reset)
 		if (mtk_wed_device_active(wed) && mtk_wed_get_rx_capa(wed))
 			mt76_set(dev, MT_WFDMA0_GLO_CFG,
 				 MT_WFDMA0_GLO_CFG_TX_DMA_EN |
-				 MT_WFDMA0_GLO_CFG_OMIT_TX_INFO |
-				 MT_WFDMA0_GLO_CFG_EXT_EN);
+				 MT_WFDMA0_GLO_CFG_OMIT_TX_INFO);
 		else
 			mt76_set(dev, MT_WFDMA0_GLO_CFG,
 				 MT_WFDMA0_GLO_CFG_TX_DMA_EN |
@@ -244,8 +243,7 @@ void mt7996_dma_start(struct mt7996_dev *dev, bool reset, bool wed_reset)
 				 MT_WFDMA0_GLO_CFG_TX_DMA_EN |
 				 MT_WFDMA0_GLO_CFG_RX_DMA_EN |
 				 MT_WFDMA0_GLO_CFG_OMIT_TX_INFO |
-				 MT_WFDMA0_GLO_CFG_OMIT_RX_INFO_PFET2 |
-				 MT_WFDMA0_GLO_CFG_EXT_EN);
+				 MT_WFDMA0_GLO_CFG_OMIT_RX_INFO_PFET2);
 	}
 
 	/* enable interrupts for TX/RX rings */

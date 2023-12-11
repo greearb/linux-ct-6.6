@@ -287,6 +287,7 @@ int mt7996_mmio_wed_init(struct mt7996_dev *dev, void *pdev_ptr,
 	struct mtk_wed_device *wed = &dev->mt76.mmio.wed;
 	struct pci_dev *pci_dev = pdev_ptr;
 	u32 hif1_ofs = 0;
+	int ret;
 
 	if (!wed_enable)
 		return 0;
@@ -405,6 +406,14 @@ int mt7996_mmio_wed_init(struct mt7996_dev *dev, void *pdev_ptr,
 
 	*irq = wed->irq;
 	dev->mt76.dma_dev = wed->dev;
+
+	ret = dma_set_mask(wed->dev, DMA_BIT_MASK(32));
+	if (ret)
+		return ret;
+
+	ret = dma_set_coherent_mask(wed->dev, DMA_BIT_MASK(32));
+	if (ret)
+		return ret;
 
 	return 1;
 #else
