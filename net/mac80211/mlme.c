@@ -50,6 +50,9 @@ module_param(max_auth_tries, int, 0644);
 MODULE_PARM_DESC(max_auth_tries,
 		 "Maximum auth tries before giving up (default is 3).");
 
+#define IEEE80211_ADV_TTLM_SAFETY_BUFFER_MS msecs_to_jiffies(100)
+#define IEEE80211_ADV_TTLM_ST_UNDERFLOW 0xff00
+
 static int max_nullfunc_tries = 2;
 module_param(max_nullfunc_tries, int, 0644);
 MODULE_PARM_DESC(max_nullfunc_tries,
