@@ -2645,6 +2645,8 @@ ieee80211_eht_cap_ie_to_sta_eht_cap(struct ieee80211_sub_if_data *sdata,
 				    const struct ieee80211_eht_cap_elem *eht_cap_ie_elem,
 				    u8 eht_cap_len,
 				    struct link_sta_info *link_sta);
+void ieee80211_process_neg_ttlm_req(struct ieee80211_sub_if_data *sdata,
+				    struct ieee80211_mgmt *mgmt, size_t len);
 
 void ieee80211_adjust_he_cap(struct ieee80211_sta_he_cap* my_cap,
 			     const struct ieee80211_sta_he_cap* he_cap,
