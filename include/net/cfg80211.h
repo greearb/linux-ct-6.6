@@ -3059,6 +3059,7 @@ struct cfg80211_assoc_link {
  * @ASSOC_REQ_DISABLE_160:  Disable 160Mhz
  * @ASSOC_REQ_DISABLE_OFDMA:  Disable OFDMA
  * @ASSOC_REQ_DISABLE_320:  Disable 320Mhz
+ * @ASSOC_REQ_SPP_AMSDU: SPP A-MSDUs will be used on this connection (if any)
  */
 enum cfg80211_assoc_req_flags {
 	ASSOC_REQ_DISABLE_HT			= BIT(0),
@@ -3068,10 +3069,11 @@ enum cfg80211_assoc_req_flags {
 	ASSOC_REQ_DISABLE_HE			= BIT(4),
 	ASSOC_REQ_DISABLE_EHT			= BIT(5),
 	CONNECT_REQ_MLO_SUPPORT			= BIT(6),
-	ASSOC_REQ_DISABLE_TWT                   = BIT(7),
-	ASSOC_REQ_DISABLE_160			= BIT(8),
-	ASSOC_REQ_DISABLE_OFDMA			= BIT(9),
-	ASSOC_REQ_DISABLE_320			= BIT(10),
+	ASSOC_REQ_SPP_AMSDU			= BIT(7),
+	ASSOC_REQ_DISABLE_TWT                   = BIT(8),
+	ASSOC_REQ_DISABLE_160			= BIT(9),
+	ASSOC_REQ_DISABLE_OFDMA			= BIT(10),
+	ASSOC_REQ_DISABLE_320			= BIT(11),
 };
 
 /**
