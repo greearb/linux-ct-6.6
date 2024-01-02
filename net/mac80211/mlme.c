@@ -3234,9 +3234,14 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	memset(sdata->vif.bss_conf.tx_pwr_env, 0,
 	       sizeof(sdata->vif.bss_conf.tx_pwr_env));
 
+	sdata->vif.cfg.eml_cap = 0;
+	sdata->vif.cfg.eml_med_sync_delay = 0;
+	sdata->vif.cfg.mld_capa_op = 0;
+
 	memset(&sdata->u.mgd.ttlm_info, 0,
 	       sizeof(sdata->u.mgd.ttlm_info));
 	wiphy_delayed_work_cancel(sdata->local->hw.wiphy, &ifmgd->ttlm_work);
+
 	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
 				  &ifmgd->neg_ttlm_timeout_work);
 	ieee80211_vif_set_links(sdata, 0, 0, true);
@@ -5144,16 +5149,8 @@ static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
 		    eht_ml_elem &&
 		    ieee80211_mle_type_ok(eht_ml_elem->data + 1,
 					  IEEE80211_ML_CONTROL_TYPE_BASIC,
-					  eht_ml_elem->datalen - 1)) {
+					  eht_ml_elem->datalen - 1))
 			supports_mlo = true;
-
-			sdata->vif.cfg.eml_cap =
-				ieee80211_mle_get_eml_cap(eht_ml_elem->data + 1);
-			sdata->vif.cfg.eml_med_sync_delay =
-				ieee80211_mle_get_eml_med_sync_delay(eht_ml_elem->data + 1);
-			sdata->vif.cfg.mld_capa_op =
-				ieee80211_mle_get_mld_capa_op(eht_ml_elem->data + 1);
-		}
 	}
 
 	if (sband->band == NL80211_BAND_S1GHZ) {
@@ -5347,6 +5344,13 @@ static bool ieee80211_assoc_success(struct ieee80211_sub_if_data *sdata,
 				link_info(link, "prep_channel failed\n");
 				goto out_err;
 			}
+
+			sdata->vif.cfg.eml_cap =
+				ieee80211_mle_get_eml_cap((const void *)elems->ml_basic);
+			sdata->vif.cfg.eml_med_sync_delay =
+				ieee80211_mle_get_eml_med_sync_delay((const void *)elems->ml_basic);
+			sdata->vif.cfg.mld_capa_op =
+				ieee80211_mle_get_mld_capa_op((const void *)elems->ml_basic);
 		}
 
 		err = ieee80211_mgd_setup_link_sta(link, sta, link_sta,
