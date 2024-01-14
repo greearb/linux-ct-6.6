@@ -71,7 +71,8 @@ static const char ieee80211_gstrings_sta_stats[][ETH_GSTRING_LEN] = {
 	"tx_packets", "tx_bytes",
 	"tx_filtered", "tx_retry_failed", "tx_retries",
 	"sta_state", "txrate", "rxrate", "signal", "signal_beacon",
-	"signal_chains", "signal_chains_avg",
+	"signal_chains", "signal_chains_avg", "bss_color",
+	/* Add new stats here, channel and others go below */
 	"channel", "noise", "ch_time", "ch_time_busy",
 	"ch_time_ext_busy", "ch_time_rx", "ch_time_tx"
 };
@@ -299,6 +300,11 @@ static void ieee80211_get_stats2(struct net_device *dev,
 		}
 		i += 2;
 	}
+
+	if (sdata->vif.bss_conf.he_bss_color.enabled)
+		data[i++] = sdata->vif.bss_conf.he_bss_color.color;
+	else
+		data[i++] = 0;
 
 do_survey:
 	i = STA_STATS_LEN - STA_STATS_SURVEY_LEN;
