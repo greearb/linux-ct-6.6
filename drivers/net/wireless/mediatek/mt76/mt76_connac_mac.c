@@ -547,8 +547,7 @@ void mt76_connac2_mac_write_txwi(struct mt76_dev *dev, __le32 *txwi,
 	if (pid >= MT_PACKET_ID_FIRST ||
 	    (pid == MT_PACKET_ID_NO_SKB && dev->txs_for_no_skb_enabled)) {
 		val |= MT_TXD5_TX_STATUS_HOST;
-		amsdu_en = amsdu_en && !is_mt7921(dev);
-
+		amsdu_en = 0;
 		mtk_dbg(dev, TX, "wcid: %d connac2_mac_write_txwi, enabling TXD5_TX_STATUS_HOST",
 			wcid->idx);
 	} else {
@@ -589,6 +588,8 @@ void mt76_connac2_mac_write_txwi(struct mt76_dev *dev, __le32 *txwi,
 				spe_idx = 24 + phy_idx;
 			txwi[7] |= cpu_to_le32(FIELD_PREP(MT_TXD7_SPE_IDX, spe_idx));
 		}
+
+		txwi[7] &= ~cpu_to_le32(MT_TXD7_HW_AMSDU);
 	}
 }
 EXPORT_SYMBOL_GPL(mt76_connac2_mac_write_txwi);
