@@ -73,7 +73,7 @@ static struct iwl_ucode_tlv *iwl_dbg_tlv_add(const struct iwl_ucode_tlv *tlv,
 
 	return -ENOMEM; /* disable this feature, seems to cause mem corruption somehow. */
 
-	node = kzalloc(sizeof(*node) + len, GFP_KERNEL);
+	node = kzalloc(struct_size(node, tlv.data, len), GFP_KERNEL);
 	if (!node)
 		return NULL;
 
