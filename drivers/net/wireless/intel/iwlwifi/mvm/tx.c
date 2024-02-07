@@ -370,8 +370,8 @@ static u32 iwl_mvm_get_txo_rate_n_flags(struct iwl_mvm *mvm, struct iwl_txo_data
 		goto check_v1;
 	} else if (td->tx_rate_mode == 4) { /* HE-SU */
 		/* V2 format */
-		u8 mcs = td->tx_rate_idx;
-		u8 nss = td->tx_rate_nss;
+		u32 mcs = td->tx_rate_idx;
+		u32 nss = td->tx_rate_nss;
 
 		result = RATE_MCS_HE_MSK; /* HE-SU by default, others possible */
 		result |= mcs;
@@ -391,12 +391,15 @@ static u32 iwl_mvm_get_txo_rate_n_flags(struct iwl_mvm *mvm, struct iwl_txo_data
 			result |= LQ_SS_STBC_1SS_ALLOWED;
 
 		result |= ((u32)(td->tx_rate_sgi)) << RATE_MCS_HE_GI_LTF_POS;
+		if (td->beamforming)
+			result |= (1<<19); /* beamforming on */
+		/* pr_info("TXO he-su, v2 rate-n-flags: 0x%x\n", result); */
 	} else if (td->tx_rate_mode == 5) { /* EHT */
 		/* V2 format */
-		u8 mcs = td->tx_rate_idx;
-		u8 nss = td->tx_rate_nss;
+		u32 mcs = td->tx_rate_idx;
+		u32 nss = td->tx_rate_nss;
 
-		result = RATE_MCS_EHT_MSK; /* HE-SU by default, others possible */
+		result = RATE_MCS_EHT_MSK; /* EHT-SU by default, others possible */
 		result |= mcs;
 		result |= nss << RATE_MCS_NSS_POS;
 
@@ -414,6 +417,8 @@ static u32 iwl_mvm_get_txo_rate_n_flags(struct iwl_mvm *mvm, struct iwl_txo_data
 			result |= RATE_MCS_LDPC_MSK;
 		if (td->stbc)
 			result |= LQ_SS_STBC_1SS_ALLOWED;
+		if (td->beamforming)
+			result |= (1<<19); /* beamforming on */
 
 		result |= ((u32)(td->tx_rate_sgi)) << RATE_MCS_HE_GI_LTF_POS;
 	}
