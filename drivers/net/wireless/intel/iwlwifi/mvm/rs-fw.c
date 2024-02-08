@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2017 Intel Deutschland GmbH
- * Copyright (C) 2018-2023 Intel Corporation
+ * Copyright (C) 2018-2024 Intel Corporation
  */
 #include "rs.h"
 #include "fw-api.h"
@@ -492,8 +492,14 @@ void iwl_mvm_tlc_update_notif(struct iwl_mvm *mvm,
 	}
 
 	if (flags & IWL_TLC_NOTIF_FLAG_AMSDU && !mvm_link_sta->orig_amsdu_len) {
+		u32 enabled = le32_to_cpu(notif->amsdu_enabled);
 		u16 size = le32_to_cpu(notif->amsdu_size);
 		int i;
+
+		if (size < 2000) {
+			size = 0;
+			enabled = 0;
+		}
 
 		if (link_sta->agg.max_amsdu_len < size) {
 			/*
@@ -505,7 +511,7 @@ void iwl_mvm_tlc_update_notif(struct iwl_mvm *mvm,
 			goto out;
 		}
 
-		mvmsta->amsdu_enabled = le32_to_cpu(notif->amsdu_enabled);
+		mvmsta->amsdu_enabled = enabled;
 		mvmsta->max_amsdu_len = size;
 		link_sta->agg.max_rc_amsdu_len = mvmsta->max_amsdu_len;
 
