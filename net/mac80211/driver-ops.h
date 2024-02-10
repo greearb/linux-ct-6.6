@@ -581,7 +581,10 @@ static inline void drv_sta_pre_rcu_remove(struct ieee80211_local *local,
 
 	sdata = get_bss_sdata(sdata);
 	if (!check_sdata_in_driver(sdata)) {
-		pr_err("drv-sta-pre-rcu-remove, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+		if (ieee80211_hw_check(&local->hw, WANT_CLEAR_SDATA_ALWAYS))
+			pr_err("drv-sta-pre-rcu-remove, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+		else
+			return;
 	}
 
 	trace_drv_sta_pre_rcu_remove(local, sdata, &sta->sta);
@@ -713,7 +716,10 @@ static inline void drv_flush(struct ieee80211_local *local,
 	vif = sdata ? &sdata->vif : NULL;
 
 	if (sdata && !check_sdata_in_driver(sdata)) {
-		pr_err("drv_flush, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+		if (ieee80211_hw_check(&local->hw, WANT_CLEAR_SDATA_ALWAYS))
+			pr_err("drv_flush, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
+		else
+			return;
 	}
 
 	trace_drv_flush(local, queues[0], drop);
@@ -987,7 +993,6 @@ drv_mgd_protect_tdls_discover(struct ieee80211_local *local,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	if (!check_sdata_in_driver(sdata)) {
-		pr_err("drv-unassing-vif-chantx, sdata-not-in-driver, but will continue in hopes it cleans something up.\n");
 		return;
 	}
 	WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_STATION);
