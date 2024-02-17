@@ -378,9 +378,9 @@ static int cbc_decrypt(struct skcipher_request *req)
 static int aesni_ccm_setkey(struct crypto_aead *tfm, const u8 *in_key,
 			    unsigned int key_len)
 {
-	struct crypto_aes_ctx *ctx = crypto_aead_ctx(tfm);
+	struct crypto_aes_ctx *ctx = aes_ctx(crypto_aead_ctx(tfm));
 
-	return aes_set_key_common(crypto_aead_tfm(tfm), ctx, in_key, key_len);
+	return aes_set_key_common(ctx, in_key, key_len);
 }
 
 static int aesni_ccm_setauthsize(struct crypto_aead *tfm, unsigned int authsize)
